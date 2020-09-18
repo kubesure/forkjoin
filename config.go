@@ -9,10 +9,10 @@ var configuration = []config{
 	{
 		checker: &policechecker{},
 	},
-	{
+	/*{
 		checker: &centralbankchecker{},
 	},
 	{
 		checker: &creditratingchecker{},
-	},
+	},*/
 }
