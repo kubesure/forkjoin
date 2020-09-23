@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 )
 
 type result struct {
@@ -24,13 +25,24 @@ type myerror struct {
 
 func main() {
 	fmt.Println("forked...")
-	var pc prospectcompany
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for _, config := range configuration {
-		c := config
-		heartbeat, result := c.checker.check(ctx, &pc)
+	checkers := len(configuration)
+	multiplexdResult := make(chan result)
+	heartBeats := make([]chan interface{}, checkers)
 
+	for i := checkers; i <= checkers; i++ {
+		heartBeats = append(heartBeats, make(chan interface{}))
+	}
+	var wg sync.WaitGroup
+	wg.Add(checkers)
+	for i, config := range configuration {
+		cfg := config
+		in := input{ctx: ctx, pc: &prospectcompany{}, wg: &wg}
+		go cfg.checker.check(in, multiplexdResult, heartBeats[i])
+	}
+
+	/*go func() {
 		for {
 			select {
 			case _, ok := <-heartbeat: // <4>
@@ -38,18 +50,9 @@ func main() {
 					return
 				}
 				fmt.Println("pulse received")
-			case r, ok := <-result: // <5>
-				if ok == false {
-					return
-				}
-				if r.err != nil {
-					fmt.Println(r.err.Message)
-					return
-				}
-				fmt.Printf("results %v\n", r.pc.isMatch)
-				return
 			}
 		}
-	}
+	}()*/
+
 	fmt.Println("joined...")
 }
