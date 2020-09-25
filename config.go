@@ -12,7 +12,7 @@ var configuration = []config{
 	/*{
 		checker: &centralbankchecker{},
 	},
-	{
+	/*{
 		checker: &creditratingchecker{},
 	},*/
 }

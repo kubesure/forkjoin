@@ -11,48 +11,35 @@ import (
 	"sync"
 )
 
-type result struct {
-	pc  prospectcompany
-	err *myerror
-}
-
-type myerror struct {
-	Inner      error
-	Message    string
-	StackTrace string
-	Misc       map[string]interface{}
-}
-
 func main() {
 	fmt.Println("forked...")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	checkers := len(configuration)
 	multiplexdResult := make(chan result)
-	heartBeats := make([]chan interface{}, checkers)
+	heartBeats := make([]<-chan heartbeat, checkers)
 
-	for i := checkers; i <= checkers; i++ {
-		heartBeats = append(heartBeats, make(chan interface{}))
-	}
 	var wg sync.WaitGroup
 	wg.Add(checkers)
 	for i, config := range configuration {
 		cfg := config
-		in := input{ctx: ctx, pc: &prospectcompany{}, wg: &wg}
-		go cfg.checker.check(in, multiplexdResult, heartBeats[i])
+		in := input{id: i, ctx: ctx, pc: &prospectcompany{}, wg: &wg}
+		hb := cfg.checker.check(in, multiplexdResult)
+		heartBeats = append(heartBeats, hb)
 	}
 
-	/*go func() {
-		for {
-			select {
-			case _, ok := <-heartbeat: // <4>
-				if ok == false {
-					return
-				}
-				fmt.Println("pulse received")
-			}
-		}
-	}()*/
+	go func() {
+		wg.Wait()
+		close(multiplexdResult)
+	}()
 
+	for r := range multiplexdResult {
+		if r.err != nil {
+			fmt.Printf("Error for id: %v %v\n", r.id, r.err.Message)
+		} else {
+			fmt.Printf("Result for id %v is %v\n", r.id, r.pc.isMatch)
+		}
+	}
 	fmt.Println("joined...")
 }
