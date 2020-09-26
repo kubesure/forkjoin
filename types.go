@@ -40,7 +40,7 @@ type config struct {
 
 //Checker interace defines the behaviour or prospect checking implementation
 type checker interface {
-	check(pc *prospectcompany) <-chan result
+	check(ctx context.Context, pc *prospectcompany) <-chan result
 }
 
 //Multiplexer starts n checker goroutines and waits on multiplexResultStream for results
@@ -60,7 +60,8 @@ type heartbeat struct {
 	id int
 }
 
-type multiplexer struct{}
+type multiplexer struct {
+}
 
 type policechecker struct{}
 type centralbankchecker struct{}

@@ -10,16 +10,17 @@ import (
 )
 
 func main() {
-
 	var pc *prospectcompany = &prospectcompany{}
-	m := newMultiplexer()
-	multiplexdResultSteam := m.multiplex(pc)
-	for r := range multiplexdResultSteam {
+	checkProspect(pc)
+}
+
+func checkProspect(pc *prospectcompany) {
+	resultStream := multiplex(pc)
+	for r := range resultStream {
 		if r.err != nil {
 			fmt.Printf("Error for id: %v %v\n", r.id, r.err.Message)
 		} else {
 			fmt.Printf("Result for id %v is %v\n", r.id, r.pc.isMatch)
 		}
 	}
-
 }

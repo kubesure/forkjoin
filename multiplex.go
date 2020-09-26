@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 )
@@ -12,57 +11,50 @@ func newMultiplexer() multiplexer {
 	return multiplexer{}
 }
 
-func (m *multiplexer) multiplex(pc *prospectcompany) <-chan result {
+func multiplex(pc *prospectcompany) <-chan result {
 	fmt.Println("forked...")
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	checkers := len(configuration)
 	multiplexdResultStream := make(chan result)
-	resultStream := make(chan result)
-
-	var wg sync.WaitGroup
-	wg.Add(checkers)
-	for i, config := range configuration {
-		cfg := config
-		in := input{id: i, ctx: ctx, pc: pc, wg: &wg, chk: cfg.c}
-		go m.work(in, multiplexdResultStream)
-	}
 
 	go func() {
+		defer close(multiplexdResultStream)
+		var wg sync.WaitGroup
+		for i, config := range configuration {
+			wg.Add(1)
+			cfg := config
+			in := input{id: i, ctx: ctx, pc: pc, wg: &wg, chk: cfg.c}
+			go work(in, multiplexdResultStream)
+		}
 		wg.Wait()
-		close(multiplexdResultStream)
+		defer cancel()
 		fmt.Println("joined...")
 	}()
-
-	go func() {
-		for r := range multiplexdResultStream {
-			resultStream <- r
-		}
-	}()
-
-	return resultStream
+	return multiplexdResultStream
 }
 
-func (m *multiplexer) work(i input, multiplexdResultStream chan<- result) {
-
-	ctx, cancel := context.WithTimeout(i.ctx, 10*time.Second)
+func work(i input, multiplexdResultStream chan<- result) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	work := make(chan result)
 
-	doWork := func(pc *prospectcompany) {
-		rand.Seed(time.Now().UnixNano())
-		n := rand.Intn(15)
-		fmt.Printf("Sleeping %d seconds...\n", n)
-		time.Sleep(time.Duration(n) * time.Second)
-		work <- result{id: i.id, pc: prospectcompany{isMatch: true}}
-		return
-	}
-
-	go func(doWork func(pc *prospectcompany)) {
+	go func() {
 		defer i.wg.Done()
 		defer close(work)
 		defer cancel()
 
-		go doWork(i.pc)
+		go func() {
+			checkStream := i.chk.check(ctx, i.pc)
+			/*for {
+				select {
+				case <-ctx.Done():
+					return
+				case w := <-checkStream:
+					work <- w
+				}
+			}*/
+			for r := range checkStream {
+				work <- r
+			}
+		}()
 
 		sendResult := func(r result) {
 			multiplexdResultStream <- r
@@ -79,5 +71,5 @@ func (m *multiplexer) work(i input, multiplexdResultStream chan<- result) {
 				return
 			}
 		}
-	}(doWork)
+	}()
 }
