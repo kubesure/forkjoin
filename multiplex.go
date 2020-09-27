@@ -7,11 +7,13 @@ import (
 	"time"
 )
 
+//creates new basic multiplexer
 func newMultiplexer() multiplexer {
 	return multiplexer{}
 }
 
-func multiplex(pc *prospectcompany) <-chan result {
+//starts N goroutines configured in []config
+func multiplex(pc prospectcompany) <-chan result {
 	fmt.Println("forked...")
 	ctx, cancel := context.WithCancel(context.Background())
 	multiplexdResultStream := make(chan result)
@@ -32,37 +34,24 @@ func multiplex(pc *prospectcompany) <-chan result {
 	return multiplexdResultStream
 }
 
+//gogroutine waits for reponse from checker on work channel.
 func work(i input, multiplexdResultStream chan<- result) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	work := make(chan result)
+	workStream := make(chan result)
 
 	go func() {
 		defer i.wg.Done()
-		defer close(work)
+		defer close(workStream)
 		defer cancel()
 
-		go func() {
-			checkStream := i.chk.check(ctx, i.pc)
-			/*for {
-				select {
-				case <-ctx.Done():
-					return
-				case w := <-checkStream:
-					work <- w
-				}
-			}*/
-			for r := range checkStream {
-				work <- r
-			}
-		}()
-
 		sendResult := func(r result) {
+			r.id = i.id
 			multiplexdResultStream <- r
 		}
 
 		for {
 			select {
-			case r := <-work:
+			case r := <-workStream:
 				sendResult(r)
 				return
 			case <-ctx.Done():
@@ -72,4 +61,5 @@ func work(i input, multiplexdResultStream chan<- result) {
 			}
 		}
 	}()
+	i.chk.check(ctx, i.pc, workStream)
 }

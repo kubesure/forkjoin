@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+//returned by checks with the result
 type result struct {
 	id  int
 	pc  prospectcompany
@@ -18,6 +19,7 @@ type myerror struct {
 	Misc       map[string]interface{}
 }
 
+//prospect company to be checked by checkers
 type prospectcompany struct {
 	id                 int
 	companyName        string
@@ -33,25 +35,11 @@ type shareholder struct {
 	cif           string
 }
 
-//Config defines configuration for routing
-type config struct {
-	c checker
-}
-
-//Checker interace defines the behaviour or prospect checking implementation
-type checker interface {
-	check(ctx context.Context, pc *prospectcompany) <-chan result
-}
-
-//Multiplexer starts n checker goroutines and waits on multiplexResultStream for results
-//type Multiplexer interface {
-//multiplex(i input, multiplexResultStream chan<- result) <-chan heartbeat
-//}
-
+//composite object to hold data for multiplexed go routines
 type input struct {
 	id  int
 	ctx context.Context
-	pc  *prospectcompany
+	pc  prospectcompany
 	wg  *sync.WaitGroup
 	chk checker
 }
@@ -66,3 +54,13 @@ type multiplexer struct {
 type policechecker struct{}
 type centralbankchecker struct{}
 type creditratingchecker struct{}
+
+//Config defines configured checkers
+type config struct {
+	c checker
+}
+
+//Checker interace defines the behaviour or prospect checking implementation
+type checker interface {
+	check(ctx context.Context, pc prospectcompany, work chan<- result)
+}

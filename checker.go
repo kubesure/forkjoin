@@ -14,33 +14,37 @@ var configuration = []config{
 	{
 		c: &centralbankchecker{},
 	},
-	/*{
-		checker: &creditratingchecker{},
-	},*/
+	{
+		c: &creditratingchecker{},
+	},
 }
 
-func (p *policechecker) check(ctx context.Context, pc *prospectcompany) <-chan result {
-	work := make(chan result)
-	go func() {
-		defer close(work)
-		rand.Seed(time.Now().UnixNano())
-		n := rand.Intn(15)
-		fmt.Printf("Sleeping %d seconds...\n", n)
-		time.Sleep(time.Duration(n) * time.Second)
-		work <- result{pc: prospectcompany{isMatch: true}}
-	}()
-	return work
+//Mock code. Need transform and call extenal api
+func (p *policechecker) check(ctx context.Context, pc prospectcompany, work chan<- result) {
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(15)
+	fmt.Printf("Sleeping %d seconds...\n", n)
+	time.Sleep(time.Duration(n) * time.Second)
+	pc.isMatch = true
+	work <- result{pc: pc}
 }
 
-func (p *centralbankchecker) check(ctx context.Context, pc *prospectcompany) <-chan result {
-	work := make(chan result)
-	go func() {
-		defer close(work)
-		rand.Seed(time.Now().UnixNano())
-		n := rand.Intn(15)
-		fmt.Printf("Sleeping %d seconds...\n", n)
-		time.Sleep(time.Duration(n) * time.Second)
-		work <- result{pc: prospectcompany{isMatch: false}}
-	}()
-	return work
+//Mock code. Need transform and call extenal api
+func (p *centralbankchecker) check(ctx context.Context, pc prospectcompany, work chan<- result) {
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(15)
+	fmt.Printf("Sleeping %d seconds...\n", n)
+	time.Sleep(time.Duration(n) * time.Second)
+	pc.isMatch = false
+	work <- result{pc: pc}
+}
+
+//Mock code. Need transform and call extenal api
+func (p *creditratingchecker) check(ctx context.Context, pc prospectcompany, work chan<- result) {
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(15)
+	fmt.Printf("Sleeping %d seconds...\n", n)
+	time.Sleep(time.Duration(n) * time.Second)
+	pc.isMatch = false
+	work <- result{pc: pc}
 }
