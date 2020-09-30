@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"sync"
+	"time"
 )
 
 //returned by checks with the result
@@ -62,5 +63,5 @@ type config struct {
 
 //Checker interace defines the behaviour or prospect checking implementation
 type checker interface {
-	check(ctx context.Context, pc prospectcompany, work chan<- result)
+	check(done <-chan interface{}, pc prospectcompany, pulseInterval time.Duration) (<-chan result, <-chan heartbeat)
 }

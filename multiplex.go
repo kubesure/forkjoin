@@ -13,9 +13,8 @@ func newMultiplexer() multiplexer {
 }
 
 //starts N goroutines configured in []config
-func multiplex(pc prospectcompany) <-chan result {
+func multiplex(ctx context.Context, pc prospectcompany) <-chan result {
 	fmt.Println("forked...")
-	ctx, cancel := context.WithCancel(context.Background())
 	multiplexdResultStream := make(chan result)
 
 	go func() {
@@ -24,20 +23,20 @@ func multiplex(pc prospectcompany) <-chan result {
 		for i, config := range configuration {
 			wg.Add(1)
 			cfg := config
-			in := input{id: i, ctx: ctx, pc: pc, wg: &wg, chk: cfg.c}
-			go work(in, multiplexdResultStream)
+			in := input{id: i, pc: pc, wg: &wg, chk: cfg.c}
+			go work(ctx, in, multiplexdResultStream)
 		}
 		wg.Wait()
-		defer cancel()
 		fmt.Println("joined...")
 	}()
 	return multiplexdResultStream
 }
 
 //gogroutine waits for reponse from checker on work channel.
-func work(i input, multiplexdResultStream chan<- result) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func work(ctx context.Context, i input, multiplexdResultStream chan<- result) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	workStream := make(chan result)
+	done := make(chan interface{})
 
 	go func() {
 		defer i.wg.Done()
@@ -47,6 +46,7 @@ func work(i input, multiplexdResultStream chan<- result) {
 		sendResult := func(r result) {
 			r.id = i.id
 			multiplexdResultStream <- r
+			close(done)
 		}
 
 		for {
@@ -61,5 +61,19 @@ func work(i input, multiplexdResultStream chan<- result) {
 			}
 		}
 	}()
-	i.chk.check(ctx, i.pc, workStream)
+
+	go func() {
+		const pulseInterval = 1 * time.Second
+		resultStream, pulseStream := i.chk.check(done, i.pc, pulseInterval)
+
+		go func() {
+			for p := range pulseStream {
+				fmt.Printf("pulse received from %v..\n", p.id)
+			}
+		}()
+
+		for r := range resultStream {
+			workStream <- r
+		}
+	}()
 }

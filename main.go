@@ -6,12 +6,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 )
 
 func main() {
 	var pc prospectcompany = prospectcompany{}
-	resultStream := multiplex(pc)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	resultStream := multiplex(ctx, pc)
 	for r := range resultStream {
 		if r.err != nil {
 			fmt.Printf("Error for id: %v %v\n", r.id, r.err.Message)
