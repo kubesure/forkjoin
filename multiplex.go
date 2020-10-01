@@ -36,7 +36,7 @@ func multiplex(ctx context.Context, pc prospectcompany) <-chan result {
 func work(ctx context.Context, i input, multiplexdResultStream chan<- result) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	workStream := make(chan result)
-	done := make(chan interface{})
+	wardDone := make(chan interface{})
 
 	go func() {
 		defer i.wg.Done()
@@ -46,7 +46,7 @@ func work(ctx context.Context, i input, multiplexdResultStream chan<- result) {
 		sendResult := func(r result) {
 			r.id = i.id
 			multiplexdResultStream <- r
-			close(done)
+			//close(wardDone)
 		}
 
 		for {
@@ -56,6 +56,7 @@ func work(ctx context.Context, i input, multiplexdResultStream chan<- result) {
 				return
 			case <-ctx.Done():
 				r := result{id: i.id, err: &myerror{Message: ctx.Err().Error()}}
+				close(wardDone)
 				sendResult(r)
 				return
 			}
@@ -64,16 +65,37 @@ func work(ctx context.Context, i input, multiplexdResultStream chan<- result) {
 
 	go func() {
 		const pulseInterval = 1 * time.Second
-		resultStream, pulseStream := i.chk.check(done, i.pc, pulseInterval)
+		resultStream, pulseStream := i.chk.check(wardDone, i.pc, pulseInterval)
 
 		go func() {
-			for p := range pulseStream {
-				fmt.Printf("pulse received from %v..\n", p.id)
+			lastPulse := time.Now()
+			for {
+				select {
+				case _, ok := <-pulseStream:
+					if ok == false {
+						return
+					}
+					fmt.Printf("pulse received from %v..\n", i.id)
+					currPulse := time.Now()
+					diff := int32(currPulse.Sub(lastPulse).Seconds())
+					lastPulse = currPulse
+					if diff > 2 {
+						fmt.Println("heart beat inconsistent spawn new goroutine")
+						close(wardDone)
+						wardDone = make(chan interface{})
+						resultStream, pulseStream = i.chk.check(wardDone, i.pc, pulseInterval)
+
+					}
+				case r, ok := <-resultStream:
+					if ok == false {
+						return
+					}
+					workStream <- r
+					close(wardDone)
+					return
+				}
 			}
 		}()
 
-		for r := range resultStream {
-			workStream <- r
-		}
 	}()
 }

@@ -22,6 +22,7 @@ var configuration = []config{
 func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulseInterval time.Duration) (<-chan result, <-chan heartbeat) {
 	pulseStream := make(chan heartbeat)
 	resultStream := make(chan result)
+	c := make(chan result)
 
 	go func() {
 		defer close(resultStream)
@@ -29,9 +30,11 @@ func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulse
 		for {
 			select {
 			case <-done:
-				fmt.Println("Quite received....")
+				//fmt.Printf("goroutine quitting\n")
 				return
-			case <-resultStream:
+			case r := <-c:
+				fmt.Println("result received")
+				resultStream <- r
 			default:
 			}
 		}
@@ -41,7 +44,10 @@ func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulse
 		defer close(pulseStream)
 		pulse := time.Tick(pulseInterval)
 		sendPulse := func() {
-			fmt.Printf("Pluse sent from %v\n", pc.id)
+			n := randInt(4)
+			fmt.Printf("random pulse %v\n", n)
+			time.Sleep(time.Duration(n) * time.Second)
+			fmt.Printf("pluse sent from %v\n", pc.id)
 			select {
 			case pulseStream <- heartbeat{}:
 			default:
@@ -51,10 +57,11 @@ func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulse
 		for {
 			select {
 			case <-done:
-				fmt.Println("quiting pulse")
+				//fmt.Printf("pulse quitting\n")
 				return
 			case <-pulse:
 				sendPulse()
+			default:
 			}
 		}
 	}()
@@ -62,10 +69,15 @@ func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulse
 }
 
 func mockResult(pc prospectcompany, resultStream chan<- result) {
-	rand.Seed(time.Now().UnixNano())
-	n := rand.Intn(15)
+	n := randInt(15)
 	fmt.Printf("Sleeping %d seconds...\n", n)
 	time.Sleep(time.Duration(n) * time.Second)
 	pc.isMatch = false
 	resultStream <- result{pc: pc}
+}
+
+func randInt(inrange int) int {
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(inrange)
+	return n
 }
