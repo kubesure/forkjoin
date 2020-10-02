@@ -42,7 +42,7 @@ type input struct {
 	ctx context.Context
 	pc  prospectcompany
 	wg  *sync.WaitGroup
-	chk checker
+	chk worker
 }
 
 type heartbeat struct {
@@ -58,10 +58,10 @@ type creditratingchecker struct{}
 
 //Config defines configured checkers
 type config struct {
-	c checker
+	c worker
 }
 
 //Checker interace defines the behaviour or prospect checking implementation
-type checker interface {
-	check(done <-chan interface{}, pc prospectcompany, pulseInterval time.Duration) (<-chan result, <-chan heartbeat)
+type worker interface {
+	work(done <-chan interface{}, pc prospectcompany, pulseInterval time.Duration) (<-chan result, <-chan heartbeat)
 }
