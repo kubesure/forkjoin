@@ -26,6 +26,7 @@ func (p *policechecker) work(done <-chan interface{}, pc prospectcompany, pulseI
 	quit := make(chan interface{})
 
 	go func() {
+		defer close(c)
 		defer close(resultStream)
 		go mockResult(done, pc, c)
 		for {
@@ -37,6 +38,7 @@ func (p *policechecker) work(done <-chan interface{}, pc prospectcompany, pulseI
 				fmt.Println("result received")
 				resultStream <- r
 				quit <- struct{}{}
+				return
 			default:
 			}
 		}
@@ -84,6 +86,7 @@ func mockResult(done <-chan interface{}, pc prospectcompany, resultStream chan<-
 		case <-time.After((time.Duration(n) * time.Second)):
 			pc.isMatch = false
 			resultStream <- result{pc: pc}
+			return
 		}
 	}
 }
