@@ -19,22 +19,24 @@ var configuration = []config{
 }
 
 // worker checker
-func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulseInterval time.Duration) (<-chan result, <-chan heartbeat) {
+func (p *policechecker) work(done <-chan interface{}, pc prospectcompany, pulseInterval time.Duration) (<-chan result, <-chan heartbeat) {
 	pulseStream := make(chan heartbeat)
 	resultStream := make(chan result)
 	c := make(chan result)
+	quit := make(chan interface{})
 
 	go func() {
 		defer close(resultStream)
-		go mockResult(pc, resultStream)
+		go mockResult(done, pc, c)
 		for {
 			select {
 			case <-done:
-				//fmt.Printf("goroutine quitting\n")
+				fmt.Printf("goroutine asked to quit\n")
 				return
 			case r := <-c:
 				fmt.Println("result received")
 				resultStream <- r
+				quit <- struct{}{}
 			default:
 			}
 		}
@@ -44,10 +46,10 @@ func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulse
 		defer close(pulseStream)
 		pulse := time.Tick(pulseInterval)
 		sendPulse := func() {
-			n := randInt(4)
-			fmt.Printf("random pulse %v\n", n)
-			time.Sleep(time.Duration(n) * time.Second)
-			fmt.Printf("pluse sent from %v\n", pc.id)
+			//n := randInt(4)
+			//fmt.Printf("random pulse %v\n", n)
+			//time.Sleep(time.Duration(n) * time.Second)
+			//fmt.Printf("pluse sent from %v\n", pc.id)
 			select {
 			case pulseStream <- heartbeat{}:
 			default:
@@ -57,7 +59,10 @@ func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulse
 		for {
 			select {
 			case <-done:
-				//fmt.Printf("pulse quitting\n")
+				fmt.Printf("pulse asked to quit\n")
+				return
+			case <-quit:
+				fmt.Printf("pulse quitting after result returned\n")
 				return
 			case <-pulse:
 				sendPulse()
@@ -68,12 +73,19 @@ func (p *policechecker) check(done <-chan interface{}, pc prospectcompany, pulse
 	return resultStream, pulseStream
 }
 
-func mockResult(pc prospectcompany, resultStream chan<- result) {
+func mockResult(done <-chan interface{}, pc prospectcompany, resultStream chan<- result) {
 	n := randInt(15)
 	fmt.Printf("Sleeping %d seconds...\n", n)
-	time.Sleep(time.Duration(n) * time.Second)
-	pc.isMatch = false
-	resultStream <- result{pc: pc}
+	for {
+		select {
+		case <-done:
+			println("function asked to quit...")
+			return
+		case <-time.After((time.Duration(n) * time.Second)):
+			pc.isMatch = false
+			resultStream <- result{pc: pc}
+		}
+	}
 }
 
 func randInt(inrange int) int {
