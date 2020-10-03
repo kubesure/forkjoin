@@ -10,6 +10,18 @@ import (
 	"fmt"
 )
 
+var configuration = []config{
+	{
+		worker: &policechecker{},
+	},
+	/*{
+		worker: &centralbankchecker{},
+	},
+	{
+		worker: &creditratingchecker{},
+	},*/
+}
+
 func main() {
 	var pc prospectcompany = prospectcompany{}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -19,7 +31,13 @@ func main() {
 		if r.err != nil {
 			fmt.Printf("Error for id: %v %v\n", r.id, r.err.Message)
 		} else {
-			fmt.Printf("Result for id %v is %v\n", r.id, r.pc.isMatch)
+			pc, ok := r.x.(prospectcompany)
+			if !ok {
+				fmt.Println("type assertion err prospectcompany not found")
+			} else {
+				fmt.Printf("Result for id %v is %v\n", r.id, pc.isMatch)
+			}
+
 		}
 	}
 }
