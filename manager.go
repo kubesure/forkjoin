@@ -2,21 +2,27 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log"
+	"os"
 	"time"
 )
 
+func init() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ltime)
+}
+
 //goroutine waits for reponse from checker on work channel.
-func manage(ctx context.Context, i input, multiplexdResultStream chan<- result) {
+func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	workStream := make(chan result)
+	workStream := make(chan Result)
 
 	go func() {
 		defer i.wg.Done()
 		defer close(workStream)
 		defer cancel()
 
-		sendResult := func(r result) {
+		sendResult := func(r Result) {
 			r.id = i.id
 			multiplexdResultStream <- r
 		}
@@ -27,7 +33,7 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- result) 
 				sendResult(r)
 				return
 			case <-ctx.Done():
-				r := result{id: i.id, err: &myerror{Message: ctx.Err().Error()}}
+				r := Result{id: i.id, err: &FJerror{Message: ctx.Err().Error()}}
 				sendResult(r)
 				return
 			}
@@ -37,8 +43,8 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- result) 
 	go func() {
 		const pulseInterval = 1 * time.Second
 		workerDone := make(chan interface{})
-		resultStream, pulseStream := i.chk.work(workerDone, i.pc, pulseInterval)
-		lastPulse := time.Now()
+		resultStream, pulseStream := dispatch(workerDone, i.x, i.worker, pulseInterval)
+		lastPulseT := time.Now()
 
 		//worker moniter loop
 		for {
@@ -47,14 +53,14 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- result) 
 				close(workerDone)
 				return
 			case <-pulseStream:
-				currPulse := time.Now()
-				diff := int32(currPulse.Sub(lastPulse).Seconds())
-				lastPulse = currPulse
+				currPulseT := time.Now()
+				diff := int32(currPulseT.Sub(lastPulseT).Seconds())
+				lastPulseT = currPulseT
 				if diff > 2 {
-					fmt.Println("heartbeat inconsistent spawning new goroutine...")
+					log.Printf("heartbeat inconsistent spawning new woker goroutine...\n")
 					close(workerDone)
 					workerDone = make(chan interface{})
-					resultStream, pulseStream = i.chk.work(workerDone, i.pc, pulseInterval)
+					resultStream, pulseStream = dispatch(workerDone, i.x, i.worker, pulseInterval)
 				}
 			case r, _ := <-resultStream:
 				workStream <- r

@@ -3,65 +3,45 @@ package main
 import (
 	"context"
 	"sync"
-	"time"
 )
 
-//returned by checks with the result
-type result struct {
+//Result returned by checks with the result
+type Result struct {
 	id  int
-	pc  prospectcompany
-	err *myerror
+	x   interface{}
+	err *FJerror
 }
 
-type myerror struct {
+//FJerror error reported by ForkJoin
+type FJerror struct {
 	Inner      error
 	Message    string
 	StackTrace string
 	Misc       map[string]interface{}
 }
 
-//prospect company to be checked by checkers
-type prospectcompany struct {
-	id                 int
-	companyName        string
-	tradeLicenseNumber string
-	shareHolders       []shareholder
-	isMatch            bool
-}
-
-type shareholder struct {
-	firstName     string
-	lastName      string
-	accountNumber string
-	cif           string
-}
-
 //composite object to hold data for multiplexed go routines
 type input struct {
-	id  int
-	ctx context.Context
-	pc  prospectcompany
-	wg  *sync.WaitGroup
-	chk worker
+	id     int
+	ctx    context.Context
+	x      interface{}
+	wg     *sync.WaitGroup
+	worker Worker
 }
 
 type heartbeat struct {
 	id int
 }
 
-type multiplexer struct {
+//Multiplexer starts N goroutine for N dispatchers
+type Multiplexer struct {
+	workers []Worker
 }
 
-type policechecker struct{}
-type centralbankchecker struct{}
-type creditratingchecker struct{}
+//Dispatch will be implemented by the worker to dispatch the request
+//type Dispatch func(done <-chan interface{}, x interface{}, result <-chan result)
 
-//Config defines configured checkers
-type config struct {
-	c worker
-}
-
-//Checker interace defines the behaviour or prospect checking implementation
-type worker interface {
-	work(done <-chan interface{}, pc prospectcompany, pulseInterval time.Duration) (<-chan result, <-chan heartbeat)
+//Worker will be implement the work to be done and exit on the done channel
+type Worker interface {
+	work(done <-chan interface{}, x interface{}, resultStream chan<- Result)
 }

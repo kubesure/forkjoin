@@ -1,43 +1,106 @@
-// The service implements a fork and join integration pattern.
-// This service forks multiplexes an event received on a kakfa topic to N goroutines.
-// each goroutine will invoke http service multiplex will fanout and fan in and
-// publish aggregated result to a Kafka topic.
-
 package main
 
 import (
 	"context"
-	"fmt"
+	"log"
+	"math/rand"
+	"os"
+	"time"
 )
 
-var configuration = []config{
-	{
-		worker: &policechecker{},
-	},
-	/*{
-		worker: &centralbankchecker{},
-	},
-	{
-		worker: &creditratingchecker{},
-	},*/
+//prospect company to be checked by workers
+type prospectcompany struct {
+	id                 int
+	companyName        string
+	tradeLicenseNumber string
+	shareHolders       []shareholder
+	isMatch            bool
+}
+
+type shareholder struct {
+	firstName     string
+	lastName      string
+	accountNumber string
+	cif           string
+}
+
+//checks prospectcompany against police records
+type policechecker struct{}
+
+//checks prospectcompany against central bank records
+type centralbankchecker struct{}
+
+func init() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ltime)
 }
 
 func main() {
-	var pc prospectcompany = prospectcompany{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	resultStream := multiplex(ctx, pc)
+	var pc prospectcompany = prospectcompany{}
+	m := NewMultiplexer()
+	m.addWorker(&centralbankchecker{})
+	m.addWorker(&policechecker{})
+	resultStream := m.Multiplex(ctx, pc)
 	for r := range resultStream {
 		if r.err != nil {
-			fmt.Printf("Error for id: %v %v\n", r.id, r.err.Message)
+			log.Printf("Error for id: %v %v\n", r.id, r.err.Message)
 		} else {
 			pc, ok := r.x.(prospectcompany)
 			if !ok {
-				fmt.Println("type assertion err prospectcompany not found")
+				log.Println("type assertion err prospectcompany not found")
 			} else {
-				fmt.Printf("Result for id %v is %v\n", r.id, pc.isMatch)
+				log.Printf("Result for id %v is %v\n", r.id, pc.isMatch)
 			}
-
 		}
 	}
+}
+
+//example worker
+func (c *centralbankchecker) work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
+	pc, ok := x.(prospectcompany)
+	if !ok {
+		resultStream <- Result{err: &FJerror{Message: "type assertion err prospectcompany not found"}}
+		return
+	}
+	n := randInt(15)
+	log.Printf("Sleeping %d seconds...\n", n)
+	for {
+		select {
+		case <-done:
+			return
+		case <-time.After((time.Duration(n) * time.Second)):
+			pc.isMatch = false
+			resultStream <- Result{x: pc}
+			return
+		}
+	}
+}
+
+//example worker
+func (c *policechecker) work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
+	pc, ok := x.(prospectcompany)
+	if !ok {
+		resultStream <- Result{err: &FJerror{Message: "type assertion err prospectcompany not found"}}
+		return
+	}
+	n := randInt(15)
+	log.Printf("Sleeping %d seconds...\n", n)
+	for {
+		select {
+		case <-done:
+			return
+		case <-time.After((time.Duration(n) * time.Second)):
+			pc.isMatch = false
+			resultStream <- Result{x: pc}
+			return
+		}
+	}
+}
+
+func randInt(inrange int) int {
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(inrange)
+	return n
 }
