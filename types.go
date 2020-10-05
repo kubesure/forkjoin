@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"sync"
 )
 
@@ -23,7 +22,6 @@ type FJerror struct {
 //composite object to hold data for multiplexed go routines
 type input struct {
 	id     int
-	ctx    context.Context
 	x      interface{}
 	wg     *sync.WaitGroup
 	worker Worker
