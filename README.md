@@ -4,12 +4,17 @@ The library implements a fork and join integration pattern using goroutines.
 ## Design
 
 1. Spawns N goroutines for  N worker added through addWorker method on the Multiplexer 
-2. Multiplexer is a request response, it return only one response for the worker
+2. Multiplexer is a request response, it return only one response form the worker
 3. Multiplexer's manager manages the heart beat, worker only need to implement the actual work
 4. Each worker needs to 
     * Implement the Worker interface and return on result channel
     * Exit its work on a signal from Manager on the done channel  
+5. Restarts the unhealthy worker (goroutine) if the work WIP heartbeat is slower than 2 seconds
 
+## TODO
+
+1. Bindings for Kafka and Java 
+2. HTTP worker simple HTTP dispatches 
 
 ## Usage & Test
 
