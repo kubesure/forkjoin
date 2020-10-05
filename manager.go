@@ -12,11 +12,12 @@ func init() {
 	log.SetFlags(log.Ltime)
 }
 
-//goroutine waits for reponse from checker on work channel.
+//goroutine waits for response from checker on work channel.
 func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	workStream := make(chan Result)
 
+	//moniters for result or context done from client cancel or timeout
 	go func() {
 		defer i.wg.Done()
 		defer close(workStream)
@@ -40,6 +41,7 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 		}
 	}()
 
+	//start a new worker, moniters progress and returns response from worker
 	go func() {
 		const pulseInterval = 1 * time.Second
 		workerDone := make(chan interface{})
@@ -56,6 +58,8 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 				currPulseT := time.Now()
 				diff := int32(currPulseT.Sub(lastPulseT).Seconds())
 				lastPulseT = currPulseT
+				//starts new goroutine if current pulse is delayed more than
+				//2 seconds than last pulse received
 				if diff > 2 {
 					log.Printf("heartbeat inconsistent spawning new woker goroutine...\n")
 					close(workerDone)
@@ -105,7 +109,7 @@ func dispatch(done <-chan interface{}, i input, w Worker, pulseInterval time.Dur
 			default:
 			}
 		}
-
+		//send pulse at a interval or 1 second
 		for {
 			select {
 			case <-done:
