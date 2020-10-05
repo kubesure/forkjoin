@@ -18,7 +18,7 @@ func NewMultiplexer() Multiplexer {
 }
 
 //AddWorker adds workers to multiplex on N worker
-func (m *Multiplexer) addWorker(w Worker) {
+func (m *Multiplexer) AddWorker(w Worker) {
 	if m.workers == nil {
 		m.workers = make([]Worker, 0)
 	}

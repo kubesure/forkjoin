@@ -24,10 +24,10 @@ type shareholder struct {
 	cif           string
 }
 
-//checks prospectcompany against police records
+//Worker checks prospectcompany against police records
 type policechecker struct{}
 
-//checks prospectcompany against central bank records
+//Worker checks prospectcompany against central bank records
 type centralbankchecker struct{}
 
 func init() {
@@ -36,12 +36,13 @@ func init() {
 }
 
 func main() {
+	//client can cancel entire processing
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var pc prospectcompany = prospectcompany{}
 	m := NewMultiplexer()
-	m.addWorker(&centralbankchecker{})
-	m.addWorker(&policechecker{})
+	m.AddWorker(&centralbankchecker{})
+	m.AddWorker(&policechecker{})
 	resultStream := m.Multiplex(ctx, pc)
 	for r := range resultStream {
 		if r.err != nil {
