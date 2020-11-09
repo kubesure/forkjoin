@@ -18,15 +18,17 @@ The library implements a fork(fanout) and join(fanin) pattern using goroutines
 
 ## Usage & Test
 
-refer to main.go for complete code
+refer to forkjoin_test.go for complete code
 
 ```
-func main() {
+func TestChecker(t *testing.T) {
+	//client can cancel entire processing
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var pc prospectcompany = prospectcompany{}
 	m := NewMultiplexer()
-	m.addWorker(&centralbankchecker{})
+	m.AddWorker(&centralbankchecker{})
+	m.AddWorker(&policechecker{})
 	resultStream := m.Multiplex(ctx, pc)
 	for r := range resultStream {
 		if r.err != nil {
