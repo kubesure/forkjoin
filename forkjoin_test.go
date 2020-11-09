@@ -1,10 +1,11 @@
-package main
+package forkjoin
 
 import (
 	"context"
 	"log"
 	"math/rand"
 	"os"
+	"testing"
 	"time"
 )
 
@@ -35,7 +36,7 @@ func init() {
 	log.SetFlags(log.Ltime)
 }
 
-func main() {
+func TestChecker(t *testing.T) {
 	//client can cancel entire processing
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

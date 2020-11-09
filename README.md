@@ -5,13 +5,12 @@ The library implements a fork(fanout) and join(fanin) pattern using goroutines
 
 1. Multiplexer spawns N goroutines for N worker added through addWorker method on the Multiplexer 
 2. Multiplexer's model is request/response, it return only one response form the worker
-3. Worker only need to implement the actual work. Heartbeat is managed for the worker. 
-4. Each worker needs to 
-    * Implement the Worker interface and return on result channel
+3. Each worker needs to 
+    * Implement Worker interface and return on result channel. Heartbeat is managed for the worker.
     * Exit its work on a signal from Manager on the done channel  
-5. Worker (goroutine) is considered unhealthy and is restarted if the heartbeat is delayed by more 
-   than two seconds
-
+	* Worker only need to implement the actual work. 
+4. The worker (goroutine) is considered unhealthy if the heartbeat is delayed by more than two seconds and   	is restarted 
+   
 ## TODO
 
 1. Bindings for Kafka and Java 
