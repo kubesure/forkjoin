@@ -36,6 +36,27 @@ type Multiplexer struct {
 	workers []Worker
 }
 
+//HTTPDispatchWorker dispatches to the configured URL
+type HTTPDispatchWorker struct {
+}
+
+//METHOD http methods supported by http dispatcher
+type METHOD string
+
+//METHOD http methods supported by http dispatcher
+const (
+	GET   METHOD = "GET"
+	POST         = "POST"
+	PUT          = "PUT"
+	PATCH        = "PATCH"
+)
+
+//HTTPDispatchCfg URL and method to be dispatched too
+type HTTPDispatchCfg struct {
+	url    string
+	method METHOD
+}
+
 //Dispatch will be implemented by the worker to dispatch the request
 //type Dispatch func(done <-chan interface{}, x interface{}, result <-chan result)
 
