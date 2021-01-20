@@ -2,7 +2,10 @@ package forkjoin
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 func (hdw *HTTPDispatchWorker) work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
@@ -33,7 +36,7 @@ func (hdw *HTTPDispatchWorker) work(done <-chan interface{}, x interface{}, resu
 		return
 	}
 
-	httpDispatch(done, cfg, resultStream)
+	go httpDispatch(done, cfg, resultStream)
 
 }
 
@@ -43,15 +46,44 @@ func httpDispatch(done <-chan interface{}, cfg HTTPDispatchCfg, resultStream cha
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	req, _ := http.NewRequestWithContext(ctx, string(cfg.method), cfg.url, nil)
-	client := &http.Client{}
-	res, err := client.Do(req)
+	responseStream := make(chan Result)
 
-	if err != nil {
-		resultStream <- Result{err: &FJerror{Message: "http method not set in configuration"}}
-		return
+	go func(rstream chan<- Result) {
+
+		req, _ := http.NewRequestWithContext(
+			ctx, string(cfg.method),
+			cfg.url,
+			strings.NewReader(cfg.payload))
+
+		for k, v := range cfg.headers {
+			req.Header.Add(k, v)
+		}
+
+		client := &http.Client{}
+		res, err := client.Do(req)
+
+		if err != nil {
+			rstream <- Result{err: &FJerror{Message: fmt.Sprintf("error in request call %v", err)}}
+		} else {
+			bb, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				rstream <- Result{err: &FJerror{Message: "error reading http body"}}
+			}
+			rstream <- Result{x: string(bb)}
+			res.Body.Close()
+		}
+	}(responseStream)
+
+	for {
+		select {
+		case <-done:
+			resultStream <- Result{err: &FJerror{Message: "http call taking too long breaking the call"}}
+			cancel()
+			return
+		case r := <-responseStream:
+			resultStream <- r
+			return
+		default:
+		}
 	}
-
-	resultStream <- Result{id: 1, x: res}
-	return
 }

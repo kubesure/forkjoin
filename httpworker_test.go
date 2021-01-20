@@ -13,8 +13,9 @@ func init() {
 }
 
 func TestHttpGETDispatch(t *testing.T) {
-	cfg := new(HTTPDispatchCfg)
+	cfg := HTTPDispatchCfg{}
 	cfg.method = GET
+	cfg.url = "http://localhost/anything"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := NewMultiplexer()
@@ -24,6 +25,17 @@ func TestHttpGETDispatch(t *testing.T) {
 		if r.err != nil {
 			log.Printf("Error for id: %v %v\n", r.id, r.err.Message)
 		} else {
+			res, ok := r.x.(string)
+			if !ok {
+				log.Println("type assertion err http.Response not found")
+			} else {
+				//bb, err := ioutil.ReadAll(res.Body)
+				//if err != nil {
+				//log.Println("error", err)
+				//}
+				log.Println(res)
+				//res.Body.Close()
+			}
 		}
 	}
 }
