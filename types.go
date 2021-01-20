@@ -53,12 +53,11 @@ const (
 
 //HTTPDispatchCfg URL and method to be dispatched too
 type HTTPDispatchCfg struct {
-	url    string
-	method METHOD
+	url     string
+	method  METHOD
+	payload string
+	headers map[string]string
 }
-
-//Dispatch will be implemented by the worker to dispatch the request
-//type Dispatch func(done <-chan interface{}, x interface{}, result <-chan result)
 
 //Worker will be implement the work to be done and exit on the done channel
 type Worker interface {
