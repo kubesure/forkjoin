@@ -51,12 +51,31 @@ const (
 	PATCH        = "PATCH"
 )
 
-//HTTPDispatchCfg URL and method to be dispatched too
-type HTTPDispatchCfg struct {
-	url     string
-	method  METHOD
-	payload string
-	headers map[string]string
+//HTTPRequest URL and method to be dispatched too
+type HTTPRequest struct {
+	Message HTTPMessage
+}
+
+//HTTPResponse URL and method to be dispatched too
+type HTTPResponse struct {
+	Message HTTPMessage
+}
+
+//HTTPMessage URL and method to be dispatched too
+type HTTPMessage struct {
+	ID      int
+	URL     string
+	Method  METHOD
+	Payload string
+	Headers map[string]string
+}
+
+//Add adds headers to messsage
+func (hm *HTTPMessage) Add(key, value string) {
+	if hm.Headers == nil {
+		hm.Headers = make(map[string]string)
+	}
+	hm.Headers[key] = value
 }
 
 //Worker will be implement the work to be done and exit on the done channel

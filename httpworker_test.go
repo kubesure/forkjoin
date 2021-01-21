@@ -13,14 +13,14 @@ func init() {
 }
 
 func TestHttpGETDispatch(t *testing.T) {
-	cfg := HTTPDispatchCfg{}
-	cfg.method = GET
-	cfg.url = "http://localhost/anything"
+	reqMsg := HTTPRequest{}
+	msg := HTTPMessage{Method: GET, URL: "http://localhost/anything"}
+	msg.Add("header1", "value1")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := NewMultiplexer()
 	m.AddWorker(&HTTPDispatchWorker{})
-	resultStream := m.Multiplex(ctx, cfg)
+	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
 		if r.err != nil {
 			log.Printf("Error for id: %v %v\n", r.id, r.err.Message)
