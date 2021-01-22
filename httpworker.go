@@ -12,7 +12,7 @@ func (hdw *HTTPDispatchWorker) work(done <-chan interface{}, x interface{}, resu
 
 	req, ok := x.(HTTPRequest)
 	if !ok {
-		resultStream <- Result{err: &FJerror{Message: "type assertion err HTTPDispatchCfg not found"}}
+		resultStream <- Result{err: &FJerror{Message: "type assertion err HTTPRequest not found"}}
 		return
 	}
 
@@ -53,7 +53,6 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 			ctx, string(reqMsg.Message.Method),
 			reqMsg.Message.URL,
 			strings.NewReader(reqMsg.Message.Payload))
-		//req.Header = reqMsg.Message.Headers
 
 		for k, v := range reqMsg.Message.Headers {
 			req.Header.Add(k, v)
@@ -61,7 +60,6 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 
 		client := &http.Client{}
 		res, err := client.Do(req)
-
 		if err != nil {
 			responseStream <- Result{err: &FJerror{Message: fmt.Sprintf("error in request call %v", err)}}
 		} else {
@@ -72,10 +70,11 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 
 			hr := HTTPResponse{
 				Message: HTTPMessage{
-					ID:      reqMsg.Message.ID,
-					Method:  reqMsg.Message.Method,
-					URL:     reqMsg.Message.URL,
-					Payload: string(bb),
+					ID:         reqMsg.Message.ID,
+					StatusCode: res.StatusCode,
+					Method:     reqMsg.Message.Method,
+					URL:        reqMsg.Message.URL,
+					Payload:    string(bb),
 				},
 			}
 

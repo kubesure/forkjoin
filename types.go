@@ -63,11 +63,12 @@ type HTTPResponse struct {
 
 //HTTPMessage URL and method to be dispatched too
 type HTTPMessage struct {
-	ID      int
-	URL     string
-	Method  METHOD
-	Payload string
-	Headers map[string]string
+	ID         int
+	URL        string
+	Method     METHOD
+	Payload    string
+	Headers    map[string]string
+	StatusCode int
 }
 
 //Add adds headers to messsage
