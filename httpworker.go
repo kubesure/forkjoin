@@ -108,7 +108,7 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 			cancel()
 			lock.Lock()
 			isClosed = true
-			lock.Lock()
+			lock.Unlock()
 			return
 		case r := <-responseStream:
 			resultStream <- r
