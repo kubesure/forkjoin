@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 func (hdw *HTTPDispatchWorker) work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
@@ -45,10 +47,11 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	responseStream := make(chan Result)
+	defer close(responseStream)
+	var isClosed bool
+	var lock sync.Mutex
 
 	go func() {
-		//TODO: why close is out of the this goroutine is giving an write on close error
-		defer close(responseStream)
 		req, _ := http.NewRequestWithContext(
 			ctx, string(reqMsg.Message.Method),
 			reqMsg.Message.URL,
@@ -60,7 +63,17 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 
 		client := &http.Client{}
 		res, err := client.Do(req)
+
+		lock.Lock()
+		if isClosed {
+			log.Println("responseStream is closed aborting goroutine")
+			return
+		}
+		lock.Unlock()
+
 		if err != nil {
+			log.Printf("error in request call %v", err)
+
 			responseStream <- Result{err: &FJerror{Message: fmt.Sprintf("error in request call %v", err)}}
 		} else {
 			bb, err := ioutil.ReadAll(res.Body)
@@ -83,16 +96,19 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 					hr.Message.Add(k, value)
 				}
 			}
-			responseStream <- Result{x: hr}
 			defer res.Body.Close()
+			responseStream <- Result{x: hr}
 		}
 	}()
 
 	for {
 		select {
 		case <-done:
-			resultStream <- Result{err: &FJerror{Message: "http call taking too long breaking the call"}}
+			log.Println("http request taking too long cancelling the request")
 			cancel()
+			lock.Lock()
+			isClosed = true
+			lock.Lock()
 			return
 		case r := <-responseStream:
 			resultStream <- r
