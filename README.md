@@ -18,7 +18,14 @@ The library implements a fork(fanout) and join(fanin) pattern using goroutines
 3. Streaming GRPC binding for http dispatches 
 4. Funnel and Turnout pattern
 
-protoc --proto_path=./api --go-grpc_out=./http ./api/httpforkjoin.proto
+## Generate Go code for protocol buffer and grpc 
+
+1. download protoc version 3.14.0 
+2. download protoc plugin for protobuff grpc (https://grpc.io/docs/languages/go/quickstart/) 
+3. run 
+```
+protoc -I . --go_out=./http --go-grpc_out=./http ./api/httpforkjoin.proto
+```
 
 ## Usage & Test
 

@@ -1,11 +1,7 @@
 syntax = "proto3";
 
-package forkjoin.api.v1;
+package http;
 option go_package = ".;http";
-
-service HTTPForJoinService {
-  rpc FanoutFanin(HTTPRequest) returns (stream HTTPResponse);
-}
 
 message Message {
   string url = 1;
@@ -25,9 +21,13 @@ message Message {
 
 message HTTPRequest {
   string api = 1;
-  Message message = 2;
+  repeated Message message = 2;
 }
 
 message HTTPResponse {
   Message message = 1;
+}
+
+service HTTPForJoinService {
+  rpc FanoutFanin(HTTPRequest) returns (stream HTTPResponse);
 }
