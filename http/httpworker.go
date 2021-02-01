@@ -1,4 +1,4 @@
-package forkjoin
+package http
 
 import (
 	"context"
@@ -8,23 +8,30 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	f "github.com/kubesure/forkjoin"
 )
 
-func (hdw *HTTPDispatchWorker) work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
+//DispatchWorker dispatches to the configured URL
+type DispatchWorker struct {
+}
 
-	req, ok := x.(HTTPRequest)
+//Work dispatches http request and stream a response back
+func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}, resultStream chan<- f.Result) {
+
+	req, ok := x.(f.HTTPRequest)
 	if !ok {
-		resultStream <- Result{err: &FJerror{Message: "type assertion err HTTPRequest not found"}}
+		resultStream <- f.Result{Err: &f.FJerror{Message: "type assertion err HTTPRequest not found"}}
 		return
 	}
 
 	if len(req.Message.Method) == 0 || len(req.Message.URL) == 0 {
-		resultStream <- Result{err: &FJerror{Message: "http dispatch configuration not passed"}}
+		resultStream <- f.Result{Err: &f.FJerror{Message: "http dispatch configuration not passed"}}
 		return
 	}
 
 	var validMethod bool = false
-	var methods = []METHOD{GET, POST, PUT, PATCH}
+	var methods = []f.METHOD{f.GET, f.POST, f.PUT, f.PATCH}
 
 	for _, method := range methods {
 		if req.Message.Method == method {
@@ -34,7 +41,7 @@ func (hdw *HTTPDispatchWorker) work(done <-chan interface{}, x interface{}, resu
 	}
 
 	if !validMethod {
-		resultStream <- Result{err: &FJerror{Message: "http method not set in configuration"}}
+		resultStream <- f.Result{Err: &f.FJerror{Message: "http method not set in configuration"}}
 		return
 	}
 
@@ -42,11 +49,11 @@ func (hdw *HTTPDispatchWorker) work(done <-chan interface{}, x interface{}, resu
 
 }
 
-func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan<- Result) {
+func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	responseStream := make(chan Result)
+	responseStream := make(chan f.Result)
 	defer close(responseStream)
 	var isClosed bool
 	var lock sync.Mutex
@@ -74,15 +81,15 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 		if err != nil {
 			log.Printf("error in request call %v", err)
 
-			responseStream <- Result{err: &FJerror{Message: fmt.Sprintf("error in request call %v", err)}}
+			responseStream <- f.Result{Err: &f.FJerror{Message: fmt.Sprintf("error in request call %v", err)}}
 		} else {
 			bb, err := ioutil.ReadAll(res.Body)
 			if err != nil {
-				responseStream <- Result{err: &FJerror{Message: "error reading http body"}}
+				responseStream <- f.Result{Err: &f.FJerror{Message: "error reading http body"}}
 			}
 
-			hr := HTTPResponse{
-				Message: HTTPMessage{
+			hr := f.HTTPResponse{
+				Message: f.HTTPMessage{
 					ID:         reqMsg.Message.ID,
 					StatusCode: res.StatusCode,
 					Method:     reqMsg.Message.Method,
@@ -97,7 +104,7 @@ func httpDispatch(done <-chan interface{}, reqMsg HTTPRequest, resultStream chan
 				}
 			}
 			defer res.Body.Close()
-			responseStream <- Result{x: hr}
+			responseStream <- f.Result{X: hr}
 		}
 	}()
 

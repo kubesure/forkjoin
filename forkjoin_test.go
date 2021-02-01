@@ -46,24 +46,24 @@ func TestChecker(t *testing.T) {
 	m.AddWorker(&policechecker{})
 	resultStream := m.Multiplex(ctx, pc)
 	for r := range resultStream {
-		if r.err != nil {
-			log.Printf("Error for id: %v %v\n", r.id, r.err.Message)
+		if r.Err != nil {
+			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
-			pc, ok := r.x.(prospectcompany)
+			pc, ok := r.X.(prospectcompany)
 			if !ok {
 				log.Println("type assertion err prospectcompany not found")
 			} else {
-				log.Printf("Result for id %v is %v\n", r.id, pc.isMatch)
+				log.Printf("Result for id %v is %v\n", r.ID, pc.isMatch)
 			}
 		}
 	}
 }
 
 //example worker
-func (c *centralbankchecker) work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
+func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
 	pc, ok := x.(prospectcompany)
 	if !ok {
-		resultStream <- Result{err: &FJerror{Message: "type assertion err prospectcompany not found"}}
+		resultStream <- Result{Err: &FJerror{Message: "type assertion err prospectcompany not found"}}
 		return
 	}
 	n := randInt(15)
@@ -74,17 +74,17 @@ func (c *centralbankchecker) work(done <-chan interface{}, x interface{}, result
 			return
 		case <-time.After((time.Duration(n) * time.Second)):
 			pc.isMatch = false
-			resultStream <- Result{x: pc}
+			resultStream <- Result{X: pc}
 			return
 		}
 	}
 }
 
 //example worker
-func (c *policechecker) work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
+func (c *policechecker) Work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
 	pc, ok := x.(prospectcompany)
 	if !ok {
-		resultStream <- Result{err: &FJerror{Message: "type assertion err prospectcompany not found"}}
+		resultStream <- Result{Err: &FJerror{Message: "type assertion err prospectcompany not found"}}
 		return
 	}
 	n := randInt(15)
@@ -95,7 +95,7 @@ func (c *policechecker) work(done <-chan interface{}, x interface{}, resultStrea
 			return
 		case <-time.After((time.Duration(n) * time.Second)):
 			pc.isMatch = false
-			resultStream <- Result{x: pc}
+			resultStream <- Result{X: pc}
 			return
 		}
 	}

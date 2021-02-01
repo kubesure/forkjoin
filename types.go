@@ -6,9 +6,9 @@ import (
 
 //Result returned by checks with the result
 type Result struct {
-	id  int
-	x   interface{}
-	err *FJerror
+	ID  int
+	X   interface{}
+	Err *FJerror
 }
 
 //FJerror error reported by ForkJoin
@@ -34,10 +34,6 @@ type heartbeat struct {
 //Multiplexer starts N goroutine for N dispatchers
 type Multiplexer struct {
 	workers []Worker
-}
-
-//HTTPDispatchWorker dispatches to the configured URL
-type HTTPDispatchWorker struct {
 }
 
 //METHOD http methods supported by http dispatcher
@@ -81,5 +77,5 @@ func (hm *HTTPMessage) Add(key, value string) {
 
 //Worker will be implement the work to be done and exit on the done channel
 type Worker interface {
-	work(done <-chan interface{}, x interface{}, resultStream chan<- Result)
+	Work(done <-chan interface{}, x interface{}, resultStream chan<- Result)
 }

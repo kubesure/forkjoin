@@ -1,10 +1,12 @@
-package forkjoin
+package http
 
 import (
 	"context"
 	"log"
 	"os"
 	"testing"
+
+	f "github.com/kubesure/forkjoin"
 )
 
 func init() {
@@ -13,49 +15,49 @@ func init() {
 }
 
 func TestInvalidHttpMethod(t *testing.T) {
-	msg := HTTPMessage{URL: "https://httpbin.org/anything"}
-	reqMsg := HTTPRequest{Message: msg}
+	msg := f.HTTPMessage{URL: "https://httpbin.org/anything"}
+	reqMsg := f.HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	m := NewMultiplexer()
-	m.AddWorker(&HTTPDispatchWorker{})
+	m := f.NewMultiplexer()
+	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
-		if r.err == nil {
+		if r.Err == nil {
 			t.Errorf("should have given dispatch config error")
 		}
 	}
 }
 
 func TestEmptyHttpURL(t *testing.T) {
-	msg := HTTPMessage{Method: GET}
-	reqMsg := HTTPRequest{Message: msg}
+	msg := f.HTTPMessage{Method: f.GET}
+	reqMsg := f.HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	m := NewMultiplexer()
-	m.AddWorker(&HTTPDispatchWorker{})
+	m := f.NewMultiplexer()
+	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
-		if r.err == nil {
+		if r.Err == nil {
 			t.Errorf("should have given dispatch config error")
 		}
 	}
 }
 
 func TestHttpGETDispatch(t *testing.T) {
-	msg := HTTPMessage{Method: GET, URL: "https://httpbin.org/anything"}
+	msg := f.HTTPMessage{Method: f.GET, URL: "https://httpbin.org/anything"}
 	msg.Add("header1", "value1")
-	reqMsg := HTTPRequest{Message: msg}
+	reqMsg := f.HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	m := NewMultiplexer()
-	m.AddWorker(&HTTPDispatchWorker{})
+	m := f.NewMultiplexer()
+	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
-		if r.err != nil {
-			log.Printf("Error for id: %v %v\n", r.id, r.err.Message)
+		if r.Err != nil {
+			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
-			res, ok := r.x.(HTTPResponse)
+			res, ok := r.X.(f.HTTPResponse)
 			if !ok {
 				t.Errorf("type assertion err http.Response not found")
 			} else {
@@ -78,19 +80,19 @@ func TestHttpGETDispatch(t *testing.T) {
 }
 
 func TestHttpPOSTDispatch(t *testing.T) {
-	msg := HTTPMessage{Method: POST, URL: "https://httpbin.org/post"}
+	msg := f.HTTPMessage{Method: f.POST, URL: "https://httpbin.org/post"}
 	msg.Add("accept", "application/json")
-	reqMsg := HTTPRequest{Message: msg}
+	reqMsg := f.HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	m := NewMultiplexer()
-	m.AddWorker(&HTTPDispatchWorker{})
+	m := f.NewMultiplexer()
+	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
-		if r.err != nil {
-			log.Printf("Error for id: %v %v\n", r.id, r.err.Message)
+		if r.Err != nil {
+			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
-			res, ok := r.x.(HTTPResponse)
+			res, ok := r.X.(f.HTTPResponse)
 			if !ok {
 				t.Errorf("type assertion err http.Response not found")
 			} else {
@@ -113,16 +115,16 @@ func TestHttpPOSTDispatch(t *testing.T) {
 }
 
 func TestHttpGETDeplyedResponse(t *testing.T) {
-	msg := HTTPMessage{Method: GET, URL: "http://localhost:8000/healthz"}
-	reqMsg := HTTPRequest{Message: msg}
+	msg := f.HTTPMessage{Method: f.GET, URL: "http://localhost:8000/healthz"}
+	reqMsg := f.HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	m := NewMultiplexer()
-	m.AddWorker(&HTTPDispatchWorker{})
+	m := f.NewMultiplexer()
+	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
-		if r.err != nil {
-			log.Printf("Error for id: %v %v\n", r.id, r.err.Message)
+		if r.Err != nil {
+			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
 			t.Errorf("response not expected check test")
 		}
@@ -130,15 +132,15 @@ func TestHttpGETDeplyedResponse(t *testing.T) {
 }
 
 func TestHttpURLError(t *testing.T) {
-	msg := HTTPMessage{Method: GET, URL: "http://unknown:8000/healthz"}
-	reqMsg := HTTPRequest{Message: msg}
+	msg := f.HTTPMessage{Method: f.GET, URL: "http://unknown:8000/healthz"}
+	reqMsg := f.HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	m := NewMultiplexer()
-	m.AddWorker(&HTTPDispatchWorker{})
+	m := f.NewMultiplexer()
+	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
-		if r.err == nil {
+		if r.Err == nil {
 			t.Errorf("Should have failed to connect to unknown host")
 		}
 	}

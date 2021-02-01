@@ -24,7 +24,7 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 		defer cancel()
 
 		sendResult := func(r Result) {
-			r.id = i.id
+			r.ID = i.id
 			multiplexdResultStream <- r
 		}
 
@@ -34,7 +34,7 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 				sendResult(r)
 				return
 			case <-ctx.Done():
-				r := Result{id: i.id, err: &FJerror{Message: ctx.Err().Error()}}
+				r := Result{ID: i.id, Err: &FJerror{Message: ctx.Err().Error()}}
 				sendResult(r)
 				return
 			}

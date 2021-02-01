@@ -15,7 +15,7 @@ func dispatch(done <-chan interface{}, i input, w Worker, pulseInterval time.Dur
 		defer close(c)
 		defer close(resultStream)
 		//dispatches work to worker
-		go w.work(done, i.x, c)
+		go w.Work(done, i.x, c)
 		for {
 			select {
 			case <-done:
