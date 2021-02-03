@@ -14,27 +14,27 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// HTTPForJoinServiceClient is the client API for HTTPForJoinService service.
+// HTTPForkJoinServiceClient is the client API for HTTPForkJoinService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type HTTPForJoinServiceClient interface {
-	FanoutFanin(ctx context.Context, in *HTTPRequest, opts ...grpc.CallOption) (HTTPForJoinService_FanoutFaninClient, error)
+type HTTPForkJoinServiceClient interface {
+	FanoutFanin(ctx context.Context, in *HTTPRequest, opts ...grpc.CallOption) (HTTPForkJoinService_FanoutFaninClient, error)
 }
 
-type hTTPForJoinServiceClient struct {
+type hTTPForkJoinServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewHTTPForJoinServiceClient(cc grpc.ClientConnInterface) HTTPForJoinServiceClient {
-	return &hTTPForJoinServiceClient{cc}
+func NewHTTPForkJoinServiceClient(cc grpc.ClientConnInterface) HTTPForkJoinServiceClient {
+	return &hTTPForkJoinServiceClient{cc}
 }
 
-func (c *hTTPForJoinServiceClient) FanoutFanin(ctx context.Context, in *HTTPRequest, opts ...grpc.CallOption) (HTTPForJoinService_FanoutFaninClient, error) {
-	stream, err := c.cc.NewStream(ctx, &HTTPForJoinService_ServiceDesc.Streams[0], "/http.HTTPForJoinService/FanoutFanin", opts...)
+func (c *hTTPForkJoinServiceClient) FanoutFanin(ctx context.Context, in *HTTPRequest, opts ...grpc.CallOption) (HTTPForkJoinService_FanoutFaninClient, error) {
+	stream, err := c.cc.NewStream(ctx, &HTTPForkJoinService_ServiceDesc.Streams[0], "/http.HTTPForkJoinService/FanoutFanin", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &hTTPForJoinServiceFanoutFaninClient{stream}
+	x := &hTTPForkJoinServiceFanoutFaninClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -44,16 +44,16 @@ func (c *hTTPForJoinServiceClient) FanoutFanin(ctx context.Context, in *HTTPRequ
 	return x, nil
 }
 
-type HTTPForJoinService_FanoutFaninClient interface {
+type HTTPForkJoinService_FanoutFaninClient interface {
 	Recv() (*HTTPResponse, error)
 	grpc.ClientStream
 }
 
-type hTTPForJoinServiceFanoutFaninClient struct {
+type hTTPForkJoinServiceFanoutFaninClient struct {
 	grpc.ClientStream
 }
 
-func (x *hTTPForJoinServiceFanoutFaninClient) Recv() (*HTTPResponse, error) {
+func (x *hTTPForkJoinServiceFanoutFaninClient) Recv() (*HTTPResponse, error) {
 	m := new(HTTPResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -61,66 +61,66 @@ func (x *hTTPForJoinServiceFanoutFaninClient) Recv() (*HTTPResponse, error) {
 	return m, nil
 }
 
-// HTTPForJoinServiceServer is the server API for HTTPForJoinService service.
-// All implementations must embed UnimplementedHTTPForJoinServiceServer
+// HTTPForkJoinServiceServer is the server API for HTTPForkJoinService service.
+// All implementations must embed UnimplementedHTTPForkJoinServiceServer
 // for forward compatibility
-type HTTPForJoinServiceServer interface {
-	FanoutFanin(*HTTPRequest, HTTPForJoinService_FanoutFaninServer) error
-	mustEmbedUnimplementedHTTPForJoinServiceServer()
+type HTTPForkJoinServiceServer interface {
+	FanoutFanin(*HTTPRequest, HTTPForkJoinService_FanoutFaninServer) error
+	mustEmbedUnimplementedHTTPForkJoinServiceServer()
 }
 
-// UnimplementedHTTPForJoinServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedHTTPForJoinServiceServer struct {
+// UnimplementedHTTPForkJoinServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedHTTPForkJoinServiceServer struct {
 }
 
-func (UnimplementedHTTPForJoinServiceServer) FanoutFanin(*HTTPRequest, HTTPForJoinService_FanoutFaninServer) error {
+func (UnimplementedHTTPForkJoinServiceServer) FanoutFanin(*HTTPRequest, HTTPForkJoinService_FanoutFaninServer) error {
 	return status.Errorf(codes.Unimplemented, "method FanoutFanin not implemented")
 }
-func (UnimplementedHTTPForJoinServiceServer) mustEmbedUnimplementedHTTPForJoinServiceServer() {}
+func (UnimplementedHTTPForkJoinServiceServer) mustEmbedUnimplementedHTTPForkJoinServiceServer() {}
 
-// UnsafeHTTPForJoinServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to HTTPForJoinServiceServer will
+// UnsafeHTTPForkJoinServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to HTTPForkJoinServiceServer will
 // result in compilation errors.
-type UnsafeHTTPForJoinServiceServer interface {
-	mustEmbedUnimplementedHTTPForJoinServiceServer()
+type UnsafeHTTPForkJoinServiceServer interface {
+	mustEmbedUnimplementedHTTPForkJoinServiceServer()
 }
 
-func RegisterHTTPForJoinServiceServer(s grpc.ServiceRegistrar, srv HTTPForJoinServiceServer) {
-	s.RegisterService(&HTTPForJoinService_ServiceDesc, srv)
+func RegisterHTTPForkJoinServiceServer(s grpc.ServiceRegistrar, srv HTTPForkJoinServiceServer) {
+	s.RegisterService(&HTTPForkJoinService_ServiceDesc, srv)
 }
 
-func _HTTPForJoinService_FanoutFanin_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _HTTPForkJoinService_FanoutFanin_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(HTTPRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(HTTPForJoinServiceServer).FanoutFanin(m, &hTTPForJoinServiceFanoutFaninServer{stream})
+	return srv.(HTTPForkJoinServiceServer).FanoutFanin(m, &hTTPForkJoinServiceFanoutFaninServer{stream})
 }
 
-type HTTPForJoinService_FanoutFaninServer interface {
+type HTTPForkJoinService_FanoutFaninServer interface {
 	Send(*HTTPResponse) error
 	grpc.ServerStream
 }
 
-type hTTPForJoinServiceFanoutFaninServer struct {
+type hTTPForkJoinServiceFanoutFaninServer struct {
 	grpc.ServerStream
 }
 
-func (x *hTTPForJoinServiceFanoutFaninServer) Send(m *HTTPResponse) error {
+func (x *hTTPForkJoinServiceFanoutFaninServer) Send(m *HTTPResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-// HTTPForJoinService_ServiceDesc is the grpc.ServiceDesc for HTTPForJoinService service.
+// HTTPForkJoinService_ServiceDesc is the grpc.ServiceDesc for HTTPForkJoinService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var HTTPForJoinService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "http.HTTPForJoinService",
-	HandlerType: (*HTTPForJoinServiceServer)(nil),
+var HTTPForkJoinService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "http.HTTPForkJoinService",
+	HandlerType: (*HTTPForkJoinServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "FanoutFanin",
-			Handler:       _HTTPForJoinService_FanoutFanin_Handler,
+			Handler:       _HTTPForkJoinService_FanoutFanin_Handler,
 			ServerStreams: true,
 		},
 	},

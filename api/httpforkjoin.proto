@@ -28,6 +28,6 @@ message HTTPResponse {
   Message message = 1;
 }
 
-service HTTPForJoinService {
+service HTTPForkJoinService {
   rpc FanoutFanin(HTTPRequest) returns (stream HTTPResponse);
 }
