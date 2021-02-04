@@ -1,4 +1,4 @@
-package http
+package main
 
 import (
 	"context"
@@ -6,7 +6,10 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
+	"time"
 
+	fj "github.com/kubesure/forkjoin/http"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -20,12 +23,17 @@ func init() {
 
 //DispatchServer implements GRPC server interface FannoutFannin
 type DispatchServer struct {
-	UnimplementedHTTPForkJoinServiceServer
+	fj.UnimplementedHTTPForkJoinServiceServer
 }
 
 //FanoutFanin Fans out each http message to http dispatch works using the fork join interface
-func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinService_FanoutFaninServer) error {
-	stream.Send(&HTTPResponse{})
+func (s *DispatchServer) FanoutFanin(request *fj.HTTPRequest, stream fj.HTTPForkJoinService_FanoutFaninServer) error {
+	for i, v := range [5]int{1, 2, 3, 4, 5} {
+		time.Sleep(2 * time.Second)
+		m := &fj.Message{StatusCode: int32(i), Payload: strconv.Itoa(v)}
+		stream.Send(&fj.HTTPResponse{Message: m})
+	}
+
 	return nil
 }
 
@@ -44,7 +52,7 @@ func main() {
 
 	s := grpc.NewServer()
 	server := &DispatchServer{}
-	RegisterHTTPForkJoinServiceServer(s, server)
+	fj.RegisterHTTPForkJoinServiceServer(s, server)
 	reflection.Register(s)
 
 	h := health.NewServer()
@@ -62,5 +70,4 @@ func main() {
 		}
 	}()
 	s.Serve(lis)
-
 }
