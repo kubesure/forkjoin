@@ -17,15 +17,30 @@ message Message {
   map<string,string> headers = 4;
   string payload = 5;
   int32 statusCode = 6;
+  
 }
 
 message HTTPRequest {
   string api = 1;
-  repeated Message message = 2;
+  repeated Message messages = 2;
 }
 
 message HTTPResponse {
   Message message = 1;
+  repeated Error errors = 2;
+}
+
+enum ErrorCode {
+    InternalError = 0;
+	  RequestError = 1;
+	  ResponseError = 2;
+	  ConnectionError = 3;
+	  ConcurrencyContextError =4;
+}
+
+message Error {
+  ErrorCode code = 1;
+  string message = 2; 
 }
 
 service HTTPForkJoinService {

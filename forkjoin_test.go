@@ -63,7 +63,7 @@ func TestChecker(t *testing.T) {
 func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
 	pc, ok := x.(prospectcompany)
 	if !ok {
-		resultStream <- Result{Err: &FJerror{Message: "type assertion err prospectcompany not found"}}
+		resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 		return
 	}
 	n := randInt(15)
@@ -84,7 +84,7 @@ func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}, result
 func (c *policechecker) Work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
 	pc, ok := x.(prospectcompany)
 	if !ok {
-		resultStream <- Result{Err: &FJerror{Message: "type assertion err prospectcompany not found"}}
+		resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 		return
 	}
 	n := randInt(15)

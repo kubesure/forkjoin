@@ -34,7 +34,7 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 				sendResult(r)
 				return
 			case <-ctx.Done():
-				r := Result{ID: i.id, Err: &FJerror{Message: ctx.Err().Error()}}
+				r := Result{ID: i.id, Err: &FJerror{Code: ConcurrencyContextError, Message: ctx.Err().Error()}}
 				sendResult(r)
 				return
 			}

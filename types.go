@@ -13,11 +13,24 @@ type Result struct {
 
 //FJerror error reported by ForkJoin
 type FJerror struct {
+	Code       ErrorCode
 	Inner      error
 	Message    string
 	StackTrace string
 	Misc       map[string]interface{}
 }
+
+//ErrorCode for GRPC error responses
+type ErrorCode int32
+
+//Error codes for GRPC error responses
+const (
+	InternalError ErrorCode = iota + 1
+	RequestError
+	ResponseError
+	ConnectionError
+	ConcurrencyContextError
+)
 
 //composite object to hold data for multiplexed go routines
 type input struct {
