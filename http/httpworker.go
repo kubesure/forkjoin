@@ -14,19 +14,14 @@ import (
 
 //DispatchWorker dispatches to the configured URL
 type DispatchWorker struct {
+	Request f.HTTPRequest
 }
 
 //Work dispatches http request and stream a response back
 func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}, resultStream chan<- f.Result) {
 
-	req, ok := x.(f.HTTPRequest)
-	if !ok {
-		resultStream <- f.Result{Err: &f.FJerror{Message: "type assertion err HTTPRequest not found"}}
-		return
-	}
-
-	if len(req.Message.Method) == 0 || len(req.Message.URL) == 0 {
-		resultStream <- f.Result{Err: &f.FJerror{Message: "http dispatch configuration not passed"}}
+	if len(hdw.Request.Message.Method) == 0 || len(hdw.Request.Message.URL) == 0 {
+		resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http dispatch configuration not passed"}}
 		return
 	}
 
@@ -34,18 +29,18 @@ func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}, resultSt
 	var methods = []f.METHOD{f.GET, f.POST, f.PUT, f.PATCH}
 
 	for _, method := range methods {
-		if req.Message.Method == method {
+		if hdw.Request.Message.Method == method {
 			validMethod = true
 			break
 		}
 	}
 
 	if !validMethod {
-		resultStream <- f.Result{Err: &f.FJerror{Message: "http method not set in configuration"}}
+		resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http method not set in configuration"}}
 		return
 	}
 
-	go httpDispatch(done, req, resultStream)
+	go httpDispatch(done, hdw.Request, resultStream)
 
 }
 
@@ -79,13 +74,11 @@ func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream ch
 		lock.Unlock()
 
 		if err != nil {
-			log.Printf("error in request call %v", err)
-
-			responseStream <- f.Result{Err: &f.FJerror{Message: fmt.Sprintf("error in request call %v", err)}}
+			responseStream <- f.Result{Err: &f.FJerror{Code: f.ConnectionError, Message: fmt.Sprintf("error in request call %v", err)}}
 		} else {
 			bb, err := ioutil.ReadAll(res.Body)
 			if err != nil {
-				responseStream <- f.Result{Err: &f.FJerror{Message: "error reading http body"}}
+				responseStream <- f.Result{Err: &f.FJerror{Code: f.ResponseError, Message: "error reading http body"}}
 			}
 
 			hr := f.HTTPResponse{

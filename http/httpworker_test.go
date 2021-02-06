@@ -51,11 +51,11 @@ func TestHttpGETDispatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{})
-	resultStream := m.Multiplex(ctx, reqMsg)
+	m.AddWorker(&DispatchWorker{Request: reqMsg})
+	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err != nil {
-			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
+			t.Errorf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
 			res, ok := r.X.(f.HTTPResponse)
 			if !ok {
@@ -86,8 +86,8 @@ func TestHttpPOSTDispatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{})
-	resultStream := m.Multiplex(ctx, reqMsg)
+	m.AddWorker(&DispatchWorker{reqMsg})
+	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err != nil {
 			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
@@ -120,8 +120,8 @@ func TestHttpGETDeplyedResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{})
-	resultStream := m.Multiplex(ctx, reqMsg)
+	m.AddWorker(&DispatchWorker{reqMsg})
+	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err != nil {
 			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
@@ -137,8 +137,8 @@ func TestHttpURLError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{})
-	resultStream := m.Multiplex(ctx, reqMsg)
+	m.AddWorker(&DispatchWorker{reqMsg})
+	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err == nil {
 			t.Errorf("Should have failed to connect to unknown host")

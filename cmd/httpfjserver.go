@@ -6,10 +6,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
-	"time"
 
-	fj "github.com/kubesure/forkjoin/http"
+	fj "github.com/kubesure/forkjoin"
+	h "github.com/kubesure/forkjoin/http"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -23,18 +22,76 @@ func init() {
 
 //DispatchServer implements GRPC server interface FannoutFannin
 type DispatchServer struct {
-	fj.UnimplementedHTTPForkJoinServiceServer
+	h.UnimplementedHTTPForkJoinServiceServer
 }
 
 //FanoutFanin Fans out each http message to http dispatch works using the fork join interface
-func (s *DispatchServer) FanoutFanin(request *fj.HTTPRequest, stream fj.HTTPForkJoinService_FanoutFaninServer) error {
-	for i, v := range [5]int{1, 2, 3, 4, 5} {
-		time.Sleep(2 * time.Second)
-		m := &fj.Message{StatusCode: int32(i), Payload: strconv.Itoa(v)}
-		stream.Send(&fj.HTTPResponse{Message: m})
+func (s *DispatchServer) FanoutFanin(request *h.HTTPRequest, stream h.HTTPForkJoinService_FanoutFaninServer) error {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mtplx := fj.NewMultiplexer()
+	for i, m := range request.Messages {
+		value, _ := h.Message_Method_name[int32(m.Method)]
+		msg := fj.HTTPMessage{
+			Method:  fj.METHOD(value),
+			URL:     m.Url,
+			Payload: m.Payload,
+			Headers: m.Headers,
+			ID:      i,
+		}
+		reqMsg := fj.HTTPRequest{Message: msg}
+		mtplx.AddWorker(&h.DispatchWorker{Request: reqMsg})
 	}
 
+	resultStream := mtplx.Multiplex(ctx, nil)
+	for result := range resultStream {
+		if result.Err != nil {
+			log.Printf("Error for id: %v %v\n", result.ID, result.Err.Message)
+			err := stream.Send(makeErrRes(result.Err.Code, result.Err.Message))
+			if err != nil {
+				return err
+			}
+		} else {
+			response, ok := result.X.(fj.HTTPResponse)
+			if !ok {
+				log.Println("type assertion err http.Response not found")
+				err := stream.Send(makeErrRes(fj.InternalError, "type assertion err http.Response not found"))
+				if err != nil {
+					return err
+				}
+			} else {
+				method, _ := h.Message_Method_value[string(response.Message.Method)]
+				m := &h.Message{
+					Url:        response.Message.URL,
+					Method:     h.Message_Method(method),
+					Headers:    response.Message.Headers,
+					Payload:    response.Message.Payload,
+					StatusCode: int32(response.Message.StatusCode),
+				}
+				r := h.HTTPResponse{Message: m}
+				err := stream.Send(&r)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+	}
 	return nil
+}
+
+func makeErrRes(code fj.ErrorCode, msg string) *h.HTTPResponse {
+	fjerrors := []*h.Error{}
+	fjerr := h.Error{Code: h.ErrorCode(code), Message: msg}
+	fjerrors = append(fjerrors, &fjerr)
+	r := h.HTTPResponse{Errors: fjerrors}
+	return &r
+}
+
+func sendMsg(msg *h.Message) {
+
 }
 
 const (
@@ -52,7 +109,7 @@ func main() {
 
 	s := grpc.NewServer()
 	server := &DispatchServer{}
-	fj.RegisterHTTPForkJoinServiceServer(s, server)
+	h.RegisterHTTPForkJoinServiceServer(s, server)
 	reflection.Register(s)
 
 	h := health.NewServer()
@@ -64,7 +121,7 @@ func main() {
 
 	go func() {
 		for range c {
-			log.Println("shutting down party server...")
+			log.Println("shutting down fork join service...")
 			s.GracefulStop()
 			<-ctx.Done()
 		}
