@@ -90,10 +90,6 @@ func makeErrRes(code fj.ErrorCode, msg string) *h.HTTPResponse {
 	return &r
 }
 
-func sendMsg(msg *h.Message) {
-
-}
-
 const (
 	port = ":50051"
 )

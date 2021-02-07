@@ -92,14 +92,10 @@ func TestInvalidRequestsCfgHTTPForkJoin(t *testing.T) {
 		}
 
 		//TODO: collect errors and test
-
-		if len(response.Errors) == 0 {
+		if response.Errors[0] == nil {
 			t.Error(" there should be a errors")
 		}
-
-		for _, e := range response.Errors {
-			log.Printf("code: %v error: %v", e.Code, e.Message)
-		}
+		log.Printf("code: %v error: %v", response.Errors[0].Code, response.Errors[0].Message)
 	}
 }
 
@@ -131,7 +127,6 @@ func makeValidRequests() []*h.Message {
 }
 
 func makeInValidURLRequests() []*h.Message {
-
 	invalidURLMsg := &h.Message{Method: h.Message_GET, Url: "https://unknown/anything"}
 	delayedMesg := &h.Message{Method: h.Message_POST, Url: "http://localhost:8000/healthz"}
 	msgs := []*h.Message{}
@@ -141,11 +136,10 @@ func makeInValidURLRequests() []*h.Message {
 }
 
 func makeInValidRequestsCfg() []*h.Message {
-
-	invalidURLMsg := &h.Message{Method: h.Message_GET}
-	delayedMesg := &h.Message{Url: "http://localhost:8000/healthz"}
+	//invalidURLMsg := &h.Message{Method: h.Message_GET}
+	delayedMesg := &h.Message{Method: h.Message_GET, Url: "http://localhost:8000/healthz"}
 	msgs := []*h.Message{}
-	msgs = append(msgs, invalidURLMsg)
+	//msgs = append(msgs, invalidURLMsg)
 	msgs = append(msgs, delayedMesg)
 	return msgs
 }
