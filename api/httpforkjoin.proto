@@ -36,7 +36,7 @@ enum ErrorCode {
 	  RequestError = 1;
 	  ResponseError = 2;
 	  ConnectionError = 3;
-	  ConcurrencyContextError =4;
+	  ConcurrencyContextError = 4;
 }
 
 message Error {

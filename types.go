@@ -25,7 +25,7 @@ type ErrorCode int32
 
 //Error codes for GRPC error responses
 const (
-	InternalError ErrorCode = iota + 1
+	InternalError ErrorCode = iota
 	RequestError
 	ResponseError
 	ConnectionError

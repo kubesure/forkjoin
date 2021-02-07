@@ -136,10 +136,10 @@ func makeInValidURLRequests() []*h.Message {
 }
 
 func makeInValidRequestsCfg() []*h.Message {
-	//invalidURLMsg := &h.Message{Method: h.Message_GET}
+	invalidURLMsg := &h.Message{Method: h.Message_GET}
 	delayedMesg := &h.Message{Method: h.Message_GET, Url: "http://localhost:8000/healthz"}
 	msgs := []*h.Message{}
-	//msgs = append(msgs, invalidURLMsg)
+	msgs = append(msgs, invalidURLMsg)
 	msgs = append(msgs, delayedMesg)
 	return msgs
 }

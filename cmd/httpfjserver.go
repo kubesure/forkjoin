@@ -48,7 +48,7 @@ func (s *DispatchServer) FanoutFanin(request *h.HTTPRequest, stream h.HTTPForkJo
 	resultStream := mtplx.Multiplex(ctx, nil)
 	for result := range resultStream {
 		if result.Err != nil {
-			log.Printf("Error for id: %v %v\n", result.ID, result.Err.Message)
+			log.Printf("Error for id: %v %v %v\n", result.ID, result.Err.Code, result.Err.Message)
 			err := stream.Send(makeErrRes(result.Err.Code, result.Err.Message))
 			if err != nil {
 				return err
@@ -77,7 +77,6 @@ func (s *DispatchServer) FanoutFanin(request *h.HTTPRequest, stream h.HTTPForkJo
 				}
 			}
 		}
-
 	}
 	return nil
 }
