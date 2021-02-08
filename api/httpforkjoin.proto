@@ -4,7 +4,7 @@ package http;
 option go_package = ".;http";
 
 message Message {
-  string url = 1;
+  string URL = 1;
 
   enum Method {
     NIL = 0;
