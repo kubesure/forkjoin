@@ -36,7 +36,7 @@ func (s *DispatchServer) FanoutFanin(request *h.HTTPRequest, stream h.HTTPForkJo
 		value, _ := h.Message_Method_name[int32(m.Method)]
 		msg := fj.HTTPMessage{
 			Method:  fj.METHOD(value),
-			URL:     m.Url,
+			URL:     m.URL,
 			Payload: m.Payload,
 			Headers: m.Headers,
 			ID:      i,
@@ -64,7 +64,7 @@ func (s *DispatchServer) FanoutFanin(request *h.HTTPRequest, stream h.HTTPForkJo
 			} else {
 				method, _ := h.Message_Method_value[string(response.Message.Method)]
 				m := &h.Message{
-					Url:        response.Message.URL,
+					URL:        response.Message.URL,
 					Method:     h.Message_Method(method),
 					Headers:    response.Message.Headers,
 					Payload:    response.Message.Payload,

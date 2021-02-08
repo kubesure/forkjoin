@@ -43,6 +43,19 @@ func TestHTTPForkJoin(t *testing.T) {
 		if response.Message.StatusCode != 200 {
 			t.Errorf("error code is not 200 but %v", response.Message.StatusCode)
 		}
+
+		if response.Message.URL != "https://httpbin.org/anything" {
+			t.Errorf("URL not found in response")
+		}
+		if response.Message.Method == h.Message_NIL {
+			t.Errorf("response method is empty")
+		}
+		if len(response.Message.Payload) == 0 {
+			t.Errorf("response payload is empty")
+		}
+		if len(response.Message.Headers) == 0 {
+			t.Errorf("response headers is empty")
+		}
 	}
 }
 
@@ -112,11 +125,11 @@ func makeValidRequests() []*h.Message {
 	headers := make(map[string]string)
 	headers["header1"] = "value1"
 
-	m1 := &h.Message{Method: h.Message_GET, Url: "https://httpbin.org/anything"}
+	m1 := &h.Message{Method: h.Message_GET, URL: "https://httpbin.org/anything"}
 	m1.Headers = headers
 	m1.Payload = "{body:'body'}"
 
-	m2 := &h.Message{Method: h.Message_POST, Url: "https://httpbin.org/anything"}
+	m2 := &h.Message{Method: h.Message_POST, URL: "https://httpbin.org/anything"}
 	m2.Headers = headers
 	m2.Payload = "{body:'body'}"
 
@@ -127,8 +140,8 @@ func makeValidRequests() []*h.Message {
 }
 
 func makeInValidURLRequests() []*h.Message {
-	invalidURLMsg := &h.Message{Method: h.Message_GET, Url: "https://unknown/anything"}
-	delayedMesg := &h.Message{Method: h.Message_POST, Url: "http://localhost:8000/healthz"}
+	invalidURLMsg := &h.Message{Method: h.Message_GET, URL: "https://unknown/anything"}
+	delayedMesg := &h.Message{Method: h.Message_POST, URL: "http://localhost:8000/healthz"}
 	msgs := []*h.Message{}
 	msgs = append(msgs, invalidURLMsg)
 	msgs = append(msgs, delayedMesg)
@@ -137,7 +150,7 @@ func makeInValidURLRequests() []*h.Message {
 
 func makeInValidRequestsCfg() []*h.Message {
 	invalidURLMsg := &h.Message{Method: h.Message_GET}
-	delayedMesg := &h.Message{Method: h.Message_GET, Url: "http://localhost:8000/healthz"}
+	delayedMesg := &h.Message{Method: h.Message_GET, URL: "http://localhost:8000/healthz"}
 	msgs := []*h.Message{}
 	msgs = append(msgs, invalidURLMsg)
 	msgs = append(msgs, delayedMesg)
