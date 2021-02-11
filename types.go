@@ -91,4 +91,5 @@ func (hm *HTTPMessage) Add(key, value string) {
 //Worker will be implement the work to be done and exit on the done channel
 type Worker interface {
 	Work(done <-chan interface{}, x interface{}, resultStream chan<- Result)
+	W(done <-chan interface{}, x interface{}) <-chan Result
 }

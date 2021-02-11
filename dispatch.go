@@ -7,20 +7,19 @@ func dispatch(done <-chan interface{}, i input, w Worker, pulseInterval time.Dur
 
 	pulseStream := make(chan heartbeat)
 	resultStream := make(chan Result)
-	c := make(chan Result)
 	quit := make(chan interface{})
 
 	go func() {
 		defer close(quit)
-		defer close(c)
 		defer close(resultStream)
 		//dispatches work to worker
-		go w.Work(done, i.x, c)
+		//go w.Work(done, i.x, c)
+		result := w.W(done, i.x)
 		for {
 			select {
 			case <-done:
 				return
-			case r := <-c:
+			case r := <-result:
 				resultStream <- r
 				quit <- struct{}{}
 				return
