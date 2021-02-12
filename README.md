@@ -10,12 +10,12 @@ The library implements a fork(fanout) and join(fanin) pattern using goroutines
     * Exit its work on a signal from Manager on the done channel  
 	* Worker only need to implement the actual work
 4. The worker (goroutine) is considered unhealthy if the heartbeat is delayed by more than two seconds and is restarted 
-   
-## TODO
-
-1. Funnel pattern binding for Kafka 
 
 ## Using fork join
 
 1. [As go library](./usage_go_library.md)
 2. Turnout pattern as [GRPC streaming service](./usage_turnout.md)
+
+## TODO
+
+1. Funnel pattern with Kafka binding 

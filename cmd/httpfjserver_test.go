@@ -82,6 +82,7 @@ func TestInvalidHTTPURLForkJoin(t *testing.T) {
 		if len(response.Errors) == 0 {
 			t.Errorf(" there should be %v errors", 2)
 		}
+		log.Printf("code: %v Message: %v", response.Errors[0].Code, response.Errors[0].Message)
 	}
 }
 

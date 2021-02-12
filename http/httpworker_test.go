@@ -23,6 +23,7 @@ func TestInvalidHttpMethod(t *testing.T) {
 	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
+		log.Printf("code: %v Message: %v", r.Err.Code, r.Err.Message)
 		if r.Err == nil {
 			t.Errorf("should have given dispatch config error")
 		}
@@ -38,6 +39,7 @@ func TestEmptyHttpURL(t *testing.T) {
 	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
 	for r := range resultStream {
+		log.Printf("code: %v Message: %v", r.Err.Code, r.Err.Message)
 		if r.Err == nil {
 			t.Errorf("should have given dispatch config error")
 		}
@@ -73,7 +75,6 @@ func TestHttpGETDispatch(t *testing.T) {
 				if len(res.Message.Headers) == 0 {
 					t.Errorf("response headers is empty")
 				}
-				//log.Println(res)
 			}
 		}
 	}
@@ -108,7 +109,6 @@ func TestHttpPOSTDispatch(t *testing.T) {
 				if len(res.Message.Headers) == 0 {
 					t.Errorf("response headers is empty")
 				}
-				//log.Println(res)
 			}
 		}
 	}
@@ -140,8 +140,43 @@ func TestHttpURLError(t *testing.T) {
 	m.AddWorker(&DispatchWorker{reqMsg})
 	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
+		log.Printf("code: %v Message: %v", r.Err.Code, r.Err.Message)
 		if r.Err == nil {
 			t.Errorf("Should have failed to connect to unknown host")
+		}
+	}
+}
+
+func BenchmarkDispatchWorker(b *testing.B) {
+	msg := f.HTTPMessage{Method: f.GET, URL: "https://httpbin.org/anything"}
+	msg.Add("header1", "value1")
+	reqMsg := f.HTTPRequest{Message: msg}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	m := f.NewMultiplexer()
+	m.AddWorker(&DispatchWorker{Request: reqMsg})
+	resultStream := m.Multiplex(ctx, nil)
+	for r := range resultStream {
+		if r.Err != nil {
+			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
+		} else {
+			res, ok := r.X.(f.HTTPResponse)
+			if !ok {
+				log.Printf("type assertion err http.Response not found")
+			} else {
+				if res.Message.URL != "https://httpbin.org/anything" {
+					log.Printf("URL not found in response")
+				}
+				if len(res.Message.Method) == 0 {
+					log.Printf("response method is empty")
+				}
+				if len(res.Message.Payload) == 0 {
+					log.Printf("response payload is empty")
+				}
+				if len(res.Message.Headers) == 0 {
+					log.Printf("response headers is empty")
+				}
+			}
 		}
 	}
 }
