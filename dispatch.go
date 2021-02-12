@@ -1,27 +1,27 @@
 package forkjoin
 
-import "time"
+import (
+	"time"
+)
 
 //implements the template worker algo for all workers and dispatches work to worker
 func dispatch(done <-chan interface{}, i input, w Worker, pulseInterval time.Duration) (<-chan Result, <-chan heartbeat) {
 
 	pulseStream := make(chan heartbeat)
 	resultStream := make(chan Result)
-	quit := make(chan interface{})
+	quitPulstStream := make(chan interface{})
 
 	go func() {
-		defer close(quit)
+		defer close(quitPulstStream)
 		defer close(resultStream)
-		//dispatches work to worker
-		//go w.Work(done, i.x, c)
-		result := w.W(done, i.x)
+		result := w.Work(done, i.x)
 		for {
 			select {
 			case <-done:
 				return
 			case r := <-result:
 				resultStream <- r
-				quit <- struct{}{}
+				quitPulstStream <- struct{}{}
 				return
 			default:
 			}
@@ -42,7 +42,7 @@ func dispatch(done <-chan interface{}, i input, w Worker, pulseInterval time.Dur
 			select {
 			case <-done:
 				return
-			case <-quit:
+			case <-quitPulstStream:
 				return
 			case <-pulse:
 				sendPulse()

@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"sync"
 	"testing"
 	"time"
 )
@@ -48,11 +47,11 @@ func TestChecker(t *testing.T) {
 	resultStream := m.Multiplex(ctx, pc)
 	for r := range resultStream {
 		if r.Err != nil {
-			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
+			log.Printf("Error for id: %v code: %v message: %v\n", r.ID, r.Err.Code, r.Err.Message)
 		} else {
 			pc, ok := r.X.(prospectcompany)
 			if !ok {
-				log.Println("type assertion err prospectcompany not found")
+				log.Println("type assertion err prospectcompany not found in response")
 			} else {
 				log.Printf("Result for id %v is %v\n", r.ID, pc.isMatch)
 			}
@@ -61,36 +60,13 @@ func TestChecker(t *testing.T) {
 }
 
 //example worker
-func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
-	pc, ok := x.(prospectcompany)
-	if !ok {
-		resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
-		return
-	}
-	n := randInt(15)
-	log.Printf("Sleeping %d seconds...\n", n)
-	var isRsStrClosed bool
-	for {
-		select {
-		case <-done:
-			isRsStrClosed = true
-			return
-		case <-time.After((time.Duration(n) * time.Second)):
-			pc.isMatch = true
-			log.Printf("isRsStrClosed cbc %v\n", isRsStrClosed)
-			if !isRsStrClosed {
-				resultStream <- Result{X: pc}
-				return
-			}
-		}
-	}
-}
 
-func (c *centralbankchecker) W(done <-chan interface{}, x interface{}) <-chan Result {
+func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}) <-chan Result {
 	resultStream := make(chan Result)
-	pc, ok := x.(prospectcompany)
 
 	go func() {
+		defer close(resultStream)
+		pc, ok := x.(prospectcompany)
 		if !ok {
 			resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 			return
@@ -104,17 +80,19 @@ func (c *centralbankchecker) W(done <-chan interface{}, x interface{}) <-chan Re
 			case <-time.After((time.Duration(n) * time.Second)):
 				pc.isMatch = true
 				resultStream <- Result{X: pc}
+				return
 			}
 		}
 	}()
 	return resultStream
 }
 
-func (p *policechecker) W(done <-chan interface{}, x interface{}) <-chan Result {
+func (p *policechecker) Work(done <-chan interface{}, x interface{}) <-chan Result {
 	resultStream := make(chan Result)
-	pc, ok := x.(prospectcompany)
 
 	go func() {
+		defer close(resultStream)
+		pc, ok := x.(prospectcompany)
 		if !ok {
 			resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 			return
@@ -128,41 +106,11 @@ func (p *policechecker) W(done <-chan interface{}, x interface{}) <-chan Result 
 			case <-time.After((time.Duration(n) * time.Second)):
 				pc.isMatch = false
 				resultStream <- Result{X: pc}
+				return
 			}
 		}
 	}()
 	return resultStream
-}
-
-//example worker
-func (p *policechecker) Work(done <-chan interface{}, x interface{}, resultStream chan<- Result) {
-	pc, ok := x.(prospectcompany)
-	if !ok {
-		resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
-		return
-	}
-	n := randInt(15)
-	log.Printf("Sleeping %d seconds...\n", n)
-	var isRsStrClosed bool
-	var lock sync.Mutex
-	for {
-		select {
-		case <-done:
-			lock.Lock()
-			isRsStrClosed = true
-			lock.Unlock()
-			return
-		case <-time.After((time.Duration(n) * time.Second)):
-			pc.isMatch = false
-			log.Printf("isRsStrClosed pc %v\n", isRsStrClosed)
-			lock.Lock()
-			if !isRsStrClosed {
-				resultStream <- Result{X: pc}
-				return
-			}
-			lock.Unlock()
-		}
-	}
 }
 
 func randInt(inrange int) int {

@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
+	sync "sync"
 
 	f "github.com/kubesure/forkjoin"
 )
@@ -18,36 +18,39 @@ type DispatchWorker struct {
 }
 
 //Work dispatches http request and stream a response back
-func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}, resultStream chan<- f.Result) {
+func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}) <-chan f.Result {
+	resultStream := make(chan f.Result)
 
-	if len(hdw.Request.Message.Method) == 0 || len(hdw.Request.Message.URL) == 0 {
-		resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http dispatch configuration not passed"}}
-		return
-	}
-
-	var validMethod bool = false
-	var methods = []f.METHOD{f.GET, f.POST, f.PUT, f.PATCH}
-
-	for _, method := range methods {
-		if hdw.Request.Message.Method == method {
-			validMethod = true
-			break
+	go func() {
+		defer close(resultStream)
+		if len(hdw.Request.Message.Method) == 0 || len(hdw.Request.Message.URL) == 0 {
+			resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http dispatch configuration not passed"}}
+			return
 		}
-	}
 
-	if !validMethod {
-		resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http method not set in configuration"}}
-		return
-	}
+		var validMethod bool = false
+		var methods = []f.METHOD{f.GET, f.POST, f.PUT, f.PATCH}
 
-	go httpDispatch(done, hdw.Request, resultStream)
+		for _, method := range methods {
+			if hdw.Request.Message.Method == method {
+				validMethod = true
+				break
+			}
+		}
 
+		if !validMethod {
+			resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http method not set in configuration"}}
+			return
+		}
+		httpDispatch(done, hdw.Request, resultStream)
+	}()
+	return resultStream
 }
 
 func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	ctx, cancelReq := context.WithCancel(ctx)
+	defer cancelReq()
 	responseStream := make(chan f.Result)
 	defer close(responseStream)
 	var isClosed bool
@@ -68,6 +71,7 @@ func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream ch
 
 		lock.Lock()
 		if isClosed {
+			log.Println(fmt.Sprintf("error in request call %v", err))
 			log.Println("responseStream is closed aborting goroutine")
 			return
 		}
@@ -105,7 +109,7 @@ func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream ch
 		select {
 		case <-done:
 			log.Println("http request taking too long cancelling the request")
-			cancel()
+			cancelReq()
 			lock.Lock()
 			isClosed = true
 			lock.Unlock()
