@@ -91,7 +91,7 @@ func TestHttpPOSTDispatch(t *testing.T) {
 	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err != nil {
-			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
+			t.Errorf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
 			res, ok := r.X.(f.HTTPResponse)
 			if !ok {

@@ -2,7 +2,9 @@
 
 1. As go library
 
-check [forkjoin_test.go](./forkjoin_test.go) forkjoin_test.go for complete code
+work will be done in Work method which needs to be implemented by worker. Work will be executed concurrently and response result will be returned as a stream.
+
+Refer [forkjoin_test.go](./forkjoin_test.go) forkjoin_test.go for complete code
 
 ```
 func TestChecker(t *testing.T) {
@@ -12,19 +14,47 @@ func TestChecker(t *testing.T) {
 	var pc prospectcompany = prospectcompany{}
 	m := NewMultiplexer()
 	m.AddWorker(&centralbankchecker{})
-	m.AddWorker(&policechecker{})
 	resultStream := m.Multiplex(ctx, pc)
 	for r := range resultStream {
-		if r.err != nil {
-			log.Printf("Error for id: %v %v\n", r.id, r.err.Message)
+		if r.Err != nil {
+			t.Errorf("error not expected id: %v code: %v message: %v\n", r.ID, r.Err.Code, r.Err.Message)
 		} else {
-			pc, ok := r.x.(prospectcompany)
+			pc, ok := r.X.(prospectcompany)
 			if !ok {
-				log.Println("type assertion err prospectcompany not found")
+				t.Errorf("type assertion err prospectcompany not found in response")
 			} else {
-				log.Printf("Result for id %v is %v\n", r.id, pc.isMatch)
+				if pc.isMatch == false {
+					t.Errorf("type assertion err prospectcompany not found in response")
+				}
 			}
 		}
 	}
+}
+
+//worker
+func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}) <-chan Result {
+	resultStream := make(chan Result)
+
+	go func() {
+		defer close(resultStream)
+		pc, ok := x.(prospectcompany)
+		if !ok {
+			resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
+			return
+		}
+		n := randInt(15)
+		log.Printf("Sleeping %d seconds...\n", n)
+		for {
+			select {
+			case <-done:
+				return
+			case <-time.After((time.Duration(n) * time.Second)):
+				pc.isMatch = true
+				resultStream <- Result{X: pc}
+				return
+			}
+		}
+	}()
+	return resultStream
 }
 ```

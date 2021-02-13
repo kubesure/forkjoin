@@ -20,7 +20,10 @@ const (
 	address = "localhost:50051"
 )
 
+//run ../test/test_server.go
+//run httpfjserver.go
 //TODO: Create mock GRPC tests
+
 func TestHTTPForkJoin(t *testing.T) {
 	conn := makeGrpcConn()
 	defer conn.Close()
@@ -69,6 +72,9 @@ func TestInvalidHTTPURLForkJoin(t *testing.T) {
 	if err != nil {
 		t.Errorf("GRPC error call should have not failed with %v", err)
 	}
+
+	res := []*h.HTTPResponse{}
+
 	for {
 		response, err := stream.Recv()
 		if err == io.EOF {
@@ -77,12 +83,19 @@ func TestInvalidHTTPURLForkJoin(t *testing.T) {
 		if err != nil {
 			t.Errorf("%v.FanoutFanin = _, %v", c, err)
 		}
+		res = append(res, response)
+	}
 
-		//TODO: collect errors and test
-		if len(response.Errors) == 0 {
-			t.Errorf(" there should be %v errors", 2)
-		}
-		log.Printf("code: %v Message: %v", response.Errors[0].Code, response.Errors[0].Message)
+	if len(res) != 2 {
+		t.Error("there should be a 2 errors")
+	}
+
+	if res[0].Errors[0].Code != h.ErrorCode_ConnectionError {
+		t.Errorf("there should be error code: %v", h.ErrorCode_ConnectionError)
+	}
+
+	if res[1].Errors[0].Code != h.ErrorCode_ConcurrencyContextError {
+		t.Errorf("there should be error code: %v", h.ErrorCode_ConnectionError)
 	}
 }
 
@@ -96,6 +109,9 @@ func TestInvalidRequestsCfgHTTPForkJoin(t *testing.T) {
 	if err != nil {
 		t.Errorf("GRPC error call should have not failed with %v", err)
 	}
+
+	res := []*h.HTTPResponse{}
+
 	for {
 		response, err := stream.Recv()
 		if err == io.EOF {
@@ -104,13 +120,21 @@ func TestInvalidRequestsCfgHTTPForkJoin(t *testing.T) {
 		if err != nil {
 			t.Errorf("%v.FanoutFanin = _, %v", c, err)
 		}
-
-		//TODO: collect errors and test
-		if response.Errors[0] == nil {
-			t.Error(" there should be a errors")
-		}
-		log.Printf("code: %v error: %v", response.Errors[0].Code, response.Errors[0].Message)
+		res = append(res, response)
 	}
+
+	if len(res) == 0 {
+		t.Error("there should be a 2 errors")
+	}
+
+	if res[0].Errors[0].Code != h.ErrorCode_RequestError {
+		t.Errorf("there should be error code: %v", h.ErrorCode_RequestError)
+	}
+
+	if res[1].Errors[0].Code != h.ErrorCode_ConcurrencyContextError {
+		t.Errorf("there should be error code: %v", h.ErrorCode_ConnectionError)
+	}
+
 }
 
 func makeGrpcConn() *grpc.ClientConn {

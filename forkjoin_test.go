@@ -47,20 +47,21 @@ func TestChecker(t *testing.T) {
 	resultStream := m.Multiplex(ctx, pc)
 	for r := range resultStream {
 		if r.Err != nil {
-			log.Printf("Error for id: %v code: %v message: %v\n", r.ID, r.Err.Code, r.Err.Message)
+			t.Errorf("error not expected id: %v code: %v message: %v\n", r.ID, r.Err.Code, r.Err.Message)
 		} else {
 			pc, ok := r.X.(prospectcompany)
 			if !ok {
-				log.Println("type assertion err prospectcompany not found in response")
+				t.Errorf("type assertion err prospectcompany not found in response")
 			} else {
-				log.Printf("Result for id %v is %v\n", r.ID, pc.isMatch)
+				if pc.isMatch == false {
+					t.Errorf("type assertion err prospectcompany not found in response")
+				}
 			}
 		}
 	}
 }
 
 //example worker
-
 func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}) <-chan Result {
 	resultStream := make(chan Result)
 
@@ -104,7 +105,7 @@ func (p *policechecker) Work(done <-chan interface{}, x interface{}) <-chan Resu
 			case <-done:
 				return
 			case <-time.After((time.Duration(n) * time.Second)):
-				pc.isMatch = false
+				pc.isMatch = true
 				resultStream <- Result{X: pc}
 				return
 			}
