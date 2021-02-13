@@ -14,8 +14,4 @@ The library implements a fork(fanout) and join(fanin) pattern using goroutines
 ## Using fork join
 
 1. [As go library](./usage_go_library.md)
-2. Turnout pattern as [GRPC streaming service](./usage_turnout.md)
-
-## TODO
-
-1. Funnel pattern with Kafka binding 
+2. [GRPC streaming service](./usage_turnout.md)
