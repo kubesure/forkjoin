@@ -9,10 +9,12 @@ import (
 
 	fj "github.com/kubesure/forkjoin"
 	h "github.com/kubesure/forkjoin/http"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 )
 
 func init() {
@@ -51,7 +53,7 @@ func (s *DispatchServer) FanoutFanin(request *h.HTTPRequest, stream h.HTTPForkJo
 			log.Printf("Error for id: %v %v %v\n", result.ID, result.Err.Code, result.Err.Message)
 			err := stream.Send(makeErrRes(result.Err.Code, result.Err.Message))
 			if err != nil {
-				return err
+				return status.Errorf(codes.Internal, "Error while sending to stream", err)
 			}
 		} else {
 			response, ok := result.X.(fj.HTTPResponse)
@@ -59,7 +61,7 @@ func (s *DispatchServer) FanoutFanin(request *h.HTTPRequest, stream h.HTTPForkJo
 				log.Println("type assertion err http.Response not found")
 				err := stream.Send(makeErrRes(fj.InternalError, "type assertion err http.Response not found"))
 				if err != nil {
-					return err
+					return status.Errorf(codes.Internal, "Error while sending to stream", err)
 				}
 			} else {
 				method, _ := h.Message_Method_value[string(response.Message.Method)]
