@@ -70,7 +70,7 @@ func (s *DispatchServer) FanoutFanin(request *h.HTTPRequest, stream h.HTTPForkJo
 					Method:     h.Message_Method(method),
 					Headers:    response.Message.Headers,
 					Payload:    response.Message.Payload,
-					StatusCode: int32(response.Message.StatusCode),
+					StatusCode: uint32(response.Message.StatusCode),
 				}
 				r := h.HTTPResponse{Message: m}
 				err := stream.Send(&r)

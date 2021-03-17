@@ -17,7 +17,7 @@ message Message {
   Method method = 3;
   map<string,string> headers = 4;
   string payload = 5;
-  int32 statusCode = 6;
+  uint32 statusCode = 6;
   
 }
 
