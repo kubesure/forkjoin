@@ -2,17 +2,13 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"testing"
 
 	h "github.com/kubesure/forkjoin/http"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 func init() {
@@ -142,42 +138,12 @@ func TestInvalidRequestsCfgHTTPForkJoin(t *testing.T) {
 }
 
 func makeGrpcConn() *grpc.ClientConn {
-	certificate, err := tls.LoadX509KeyPair(os.Getenv("SERVER_CRT"), os.Getenv("SERVER_KEY"))
-	if err != nil {
-		log.Fatalf("could not load client key pair: %s", err)
-	}
-
-	// Create a certificate pool from the certificate authority
-	certPool := x509.NewCertPool()
-	ca, err := ioutil.ReadFile(os.Getenv("CA_CRT"))
-	if err != nil {
-		log.Fatalf("could not read ca certificate: %s", err)
-	}
-
-	// Append the certificates from the CA
-	if ok := certPool.AppendCertsFromPEM(ca); !ok {
-		log.Fatalf("failed to append ca certs")
-	}
-
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-			ServerName:   os.Getenv("SERVER_HOSTNAME"),
-			Certificates: []tls.Certificate{certificate},
-			RootCAs:      certPool,
-		})),
-	}
-
-	conn, err := grpc.Dial(address, opts...)
-	return conn
-}
-
-/*func makeGrpcConn() *grpc.ClientConn {
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 	return conn
-}*/
+}
 
 func makeValidRequests() []*h.Message {
 

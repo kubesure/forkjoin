@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -12,14 +9,10 @@ import (
 
 	h "github.com/kubesure/forkjoin/http"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
-
-var crtFile = os.Getenv("SERVER_CRT")
-var keyFile = os.Getenv("SERVER_KEY")
 
 func init() {
 	log.SetOutput(os.Stdout)
@@ -39,32 +32,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	certificate, err := tls.LoadX509KeyPair(os.Getenv("SERVER_CRT"), os.Getenv("SERVER_KEY"))
-	if err != nil {
-		log.Fatalf("failed to load key pair: %s", err)
-	}
-
-	certPool := x509.NewCertPool()
-	ca, err := ioutil.ReadFile(os.Getenv("CA_CRT"))
-	if err != nil {
-		log.Fatalf("could not read ca certificate: %s", err)
-	}
-
-	if ok := certPool.AppendCertsFromPEM(ca); !ok {
-		log.Fatalf("failed to append client certs")
-	}
-
-	opts := []grpc.ServerOption{
-		grpc.Creds(
-			credentials.NewTLS(&tls.Config{
-				ClientAuth:   tls.RequireAndVerifyClientCert,
-				Certificates: []tls.Certificate{certificate},
-				ClientCAs:    certPool,
-			},
-			)),
-	}
-
-	s := grpc.NewServer(opts...)
+	s := grpc.NewServer()
 	server := &h.DispatchServer{}
 	h.RegisterHTTPForkJoinServiceServer(s, server)
 	reflection.Register(s)
