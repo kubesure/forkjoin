@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	sync "sync"
 
 	f "github.com/kubesure/forkjoin"
 )
@@ -22,6 +21,9 @@ func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}) <-chan f
 	resultStream := make(chan f.Result)
 
 	go func() {
+		ctx := context.Background()
+		ctx, cancelReq := context.WithCancel(ctx)
+		defer cancelReq()
 		defer close(resultStream)
 		if len(hdw.Request.Message.Method) == 0 || len(hdw.Request.Message.URL) == 0 {
 			resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http dispatch configuration not passed"}}
@@ -42,82 +44,64 @@ func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}) <-chan f
 			resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http method not set in configuration"}}
 			return
 		}
-		httpDispatch(done, hdw.Request, resultStream)
+		go httpDispatch(ctx, hdw.Request, resultStream)
+
+		for {
+			select {
+			case <-done:
+				log.Println("http request taking too long cancelling the request")
+				cancelReq()
+				return
+			default:
+			}
+		}
 	}()
 	return resultStream
 }
 
-func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
-	ctx := context.Background()
-	ctx, cancelReq := context.WithCancel(ctx)
-	defer cancelReq()
-	responseStream := make(chan f.Result)
-	defer close(responseStream)
-	var isClosed bool
-	var lock sync.Mutex
+func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
+	req, _ := http.NewRequestWithContext(
+		ctx, string(reqMsg.Message.Method),
+		reqMsg.Message.URL,
+		strings.NewReader(reqMsg.Message.Payload))
 
-	go func() {
-		req, _ := http.NewRequestWithContext(
-			ctx, string(reqMsg.Message.Method),
-			reqMsg.Message.URL,
-			strings.NewReader(reqMsg.Message.Payload))
+	for k, v := range reqMsg.Message.Headers {
+		req.Header.Add(k, v)
+	}
 
-		for k, v := range reqMsg.Message.Headers {
-			req.Header.Add(k, v)
-		}
+	client := &http.Client{}
+	res, err := client.Do(req)
 
-		client := &http.Client{}
-		res, err := client.Do(req)
+	if context.Canceled != nil {
+		log.Println(fmt.Sprintf("error in request call %v", err))
+		log.Println("responseStream is closed aborting goroutine")
+		return
+	}
 
-		lock.Lock()
-		if isClosed {
-			log.Println(fmt.Sprintf("error in request call %v", err))
-			log.Println("responseStream is closed aborting goroutine")
-			return
-		}
-		lock.Unlock()
-
+	if err != nil {
+		resultStream <- f.Result{Err: &f.FJerror{Code: f.ConnectionError, Message: fmt.Sprintf("error in request call %v", err)}}
+	} else {
+		bb, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			responseStream <- f.Result{Err: &f.FJerror{Code: f.ConnectionError, Message: fmt.Sprintf("error in request call %v", err)}}
-		} else {
-			bb, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				responseStream <- f.Result{Err: &f.FJerror{Code: f.ResponseError, Message: "error reading http body"}}
-			}
-
-			hr := f.HTTPResponse{
-				Message: f.HTTPMessage{
-					ID:         reqMsg.Message.ID,
-					StatusCode: res.StatusCode,
-					Method:     reqMsg.Message.Method,
-					URL:        reqMsg.Message.URL,
-					Payload:    string(bb),
-				},
-			}
-
-			for k, values := range res.Header {
-				for _, value := range values {
-					hr.Message.Add(k, value)
-				}
-			}
-			defer res.Body.Close()
-			responseStream <- f.Result{X: hr}
+			resultStream <- f.Result{Err: &f.FJerror{Code: f.ResponseError, Message: "error reading http body"}}
 		}
-	}()
 
-	for {
-		select {
-		case <-done:
-			log.Println("http request taking too long cancelling the request")
-			cancelReq()
-			lock.Lock()
-			isClosed = true
-			lock.Unlock()
-			return
-		case r := <-responseStream:
-			resultStream <- r
-			return
-		default:
+		hr := f.HTTPResponse{
+			Message: f.HTTPMessage{
+				ID:         reqMsg.Message.ID,
+				StatusCode: res.StatusCode,
+				Method:     reqMsg.Message.Method,
+				URL:        reqMsg.Message.URL,
+				Payload:    string(bb),
+			},
 		}
+
+		for k, values := range res.Header {
+			for _, value := range values {
+				hr.Message.Add(k, value)
+			}
+		}
+		defer res.Body.Close()
+		resultStream <- f.Result{X: hr}
 	}
 }
