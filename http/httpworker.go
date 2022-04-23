@@ -17,16 +17,15 @@ type DispatchWorker struct {
 }
 
 //Work dispatches http request and stream a response back
-func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}) <-chan f.Result {
+//func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}) <-chan f.Result {
+func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Result {
 	resultStream := make(chan f.Result)
 
 	go func() {
-		ctx := context.Background()
-		ctx, cancelReq := context.WithCancel(ctx)
-		defer cancelReq()
 		defer close(resultStream)
+
 		if len(hdw.Request.Message.Method) == 0 || len(hdw.Request.Message.URL) == 0 {
-			resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http dispatch configuration not passed"}}
+			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestError, Message: "http dispatch configuration not passed"}}
 			return
 		}
 
@@ -41,67 +40,78 @@ func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}) <-chan f
 		}
 
 		if !validMethod {
-			resultStream <- f.Result{Err: &f.FJerror{Code: f.RequestError, Message: "http method not set in configuration"}}
+			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestError, Message: "http method not found"}}
 			return
 		}
-		go httpDispatch(ctx, hdw.Request, resultStream)
-
-		for {
-			select {
-			case <-done:
-				log.Println("http request taking too long cancelling the request")
-				cancelReq()
-				return
-			default:
-			}
-		}
+		//httpDispatch(done, hdw.Request, resultStream)
+		httpDispatch(ctx, hdw.Request, resultStream)
 	}()
 	return resultStream
 }
 
+//func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
 func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
-	req, _ := http.NewRequestWithContext(
-		ctx, string(reqMsg.Message.Method),
-		reqMsg.Message.URL,
-		strings.NewReader(reqMsg.Message.Payload))
 
-	for k, v := range reqMsg.Message.Headers {
-		req.Header.Add(k, v)
-	}
+	ctxReq, cancelReq := context.WithCancel(context.Background())
+	defer cancelReq()
+	responseStream := make(chan f.Result)
 
-	client := &http.Client{}
-	res, err := client.Do(req)
+	go func() {
+		defer close(responseStream)
+		req, _ := http.NewRequestWithContext(
+			ctxReq, string(reqMsg.Message.Method),
+			reqMsg.Message.URL,
+			strings.NewReader(reqMsg.Message.Payload))
 
-	if context.Canceled != nil {
-		log.Println(fmt.Sprintf("error in request call %v", err))
-		log.Println("responseStream is closed aborting goroutine")
-		return
-	}
-
-	if err != nil {
-		resultStream <- f.Result{Err: &f.FJerror{Code: f.ConnectionError, Message: fmt.Sprintf("error in request call %v", err)}}
-	} else {
-		bb, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			resultStream <- f.Result{Err: &f.FJerror{Code: f.ResponseError, Message: "error reading http body"}}
+		for k, v := range reqMsg.Message.Headers {
+			req.Header.Add(k, v)
 		}
 
-		hr := f.HTTPResponse{
-			Message: f.HTTPMessage{
-				ID:         reqMsg.Message.ID,
-				StatusCode: res.StatusCode,
-				Method:     reqMsg.Message.Method,
-				URL:        reqMsg.Message.URL,
-				Payload:    string(bb),
-			},
-		}
+		client := &http.Client{}
+		res, err := client.Do(req)
 
-		for k, values := range res.Header {
-			for _, value := range values {
-				hr.Message.Add(k, value)
+		if ctx.Err() != nil && res == nil {
+			log.Printf("Context cancelled")
+			responseStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("request aborted %v", err)}}
+		} else if err != nil {
+			responseStream <- f.Result{Err: &f.FJError{Code: f.ConnectionError, Message: fmt.Sprintf("error in request call %v", err)}}
+		} else {
+			bb, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				responseStream <- f.Result{Err: &f.FJError{Code: f.ResponseError, Message: "error reading http body"}}
 			}
+
+			hr := f.HTTPResponse{
+				Message: f.HTTPMessage{
+					ID:         reqMsg.Message.ID,
+					StatusCode: res.StatusCode,
+					Method:     reqMsg.Message.Method,
+					URL:        reqMsg.Message.URL,
+					Payload:    string(bb),
+				},
+			}
+
+			for k, values := range res.Header {
+				for _, value := range values {
+					hr.Message.Add(k, value)
+				}
+			}
+			defer res.Body.Close()
+			responseStream <- f.Result{X: hr}
 		}
-		defer res.Body.Close()
-		resultStream <- f.Result{X: hr}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("done: http request taking too long aborting request")
+			cancelReq()
+			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("request aborted")}}
+			return
+		case r := <-responseStream:
+			resultStream <- r
+			return
+		default:
+		}
 	}
 }

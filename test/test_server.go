@@ -33,7 +33,7 @@ func main() {
 
 func hello(w http.ResponseWriter, r *http.Request) {
 	//to simulate a deplyed response
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
 	w.WriteHeader(200)
 	data := (time.Now()).String()
 	log.Println("health ok")

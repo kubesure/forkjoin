@@ -16,6 +16,7 @@ func init() {
 func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	//TODO: rework and test defer and done sequence
 	defer i.wg.Done()
 	workerDone := make(chan interface{})
 	defer close(workerDone)
@@ -26,16 +27,19 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 	}
 
 	const pulseInterval = 1 * time.Second
-	resultStream, pulseStream := dispatch(workerDone, i, i.worker, pulseInterval)
+	//TODO: Pass ctx instead of done chan
+	//resultStream, pulseStream := dispatch(workerDone, i, i.worker, pulseInterval)
+	resultStream, pulseStream := dispatch(ctx, i, i.worker, pulseInterval)
 	lastPulseT := time.Now()
 
 	//worker moniter loop
 	for {
 		select {
-		case <-ctx.Done():
-			r := Result{ID: i.id, Err: &FJerror{Code: ConcurrencyContextError, Message: ctx.Err().Error()}}
-			sendResult(r)
-			return
+		/*case <-ctx.Done():
+		//TODO: Rethink connection timeout error response
+		r := Result{ID: i.id, Err: &FJError{Code: ConcurrencyContextError, Message: ctx.Err().Error()}}
+		sendResult(r)
+		return*/
 		case <-pulseStream:
 			currPulseT := time.Now()
 			diff := int32(currPulseT.Sub(lastPulseT).Seconds())
@@ -44,7 +48,8 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 				log.Println("heartbeat inconsistent spawning new woker goroutine...")
 				close(workerDone)
 				workerDone = make(chan interface{})
-				resultStream, pulseStream = dispatch(workerDone, i, i.worker, pulseInterval)
+				//resultStream, pulseStream = dispatch(workerDone, i, i.worker, pulseInterval)
+				resultStream, pulseStream = dispatch(ctx, i, i.worker, pulseInterval)
 			}
 		case r, _ := <-resultStream:
 			sendResult(r)
