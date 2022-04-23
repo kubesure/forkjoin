@@ -1,19 +1,22 @@
 package forkjoin
 
 import (
+	"context"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 //Result returned by checks with the result
 type Result struct {
 	ID  int
 	X   interface{}
-	Err *FJerror
+	Err *FJError
 }
 
-//FJerror error reported by ForkJoin
-type FJerror struct {
-	Code       ErrorCode
+//FJError error reported by ForkJoin
+type FJError struct {
+	Code       EventCode
 	Inner      error
 	Message    string
 	StackTrace string
@@ -21,15 +24,17 @@ type FJerror struct {
 }
 
 //ErrorCode for GRPC error responses
-type ErrorCode int32
+type EventCode int32
 
 //Error codes for GRPC error responses
 const (
-	InternalError ErrorCode = iota
+	InternalError EventCode = iota
 	RequestError
 	ResponseError
 	ConnectionError
 	ConcurrencyContextError
+	RequestAborted
+	Info
 )
 
 //composite object to hold data for multiplexed go routines
@@ -62,6 +67,7 @@ const (
 
 //HTTPRequest URL and method to be dispatched too
 type HTTPRequest struct {
+	ID      string
 	Message HTTPMessage
 }
 
@@ -72,7 +78,7 @@ type HTTPResponse struct {
 
 //HTTPMessage URL and method to be dispatched too
 type HTTPMessage struct {
-	ID         int
+	ID         string
 	URL        string
 	Method     METHOD
 	Payload    string
@@ -90,5 +96,29 @@ func (hm *HTTPMessage) Add(key, value string) {
 
 //Worker will be implement the work to be done and exit on the done channel
 type Worker interface {
-	Work(done <-chan interface{}, x interface{}) <-chan Result
+	//Work(done <-chan interface{}, x interface{}) <-chan Result
+	Work(ctx context.Context, x interface{}) <-chan Result
 }
+
+//LogEvent stores log message
+type LogEvent struct {
+	id      EventCode
+	message string
+}
+
+// StandardLogger enforces specific log message formats
+type StandardLogger struct {
+	*logrus.Logger
+}
+
+//Request ID key passsed as data in context
+type ctxKey int
+
+const (
+	CtxRequestID ctxKey = iota
+)
+
+/*
+func CtxRequestID(ctx context.Context, value string) string {
+	return ctx.Value(ctxRequestID).(string)
+}*/

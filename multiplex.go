@@ -2,14 +2,13 @@ package forkjoin
 
 import (
 	"context"
-	"log"
-	"os"
 	"sync"
 )
 
 func init() {
-	log.SetOutput(os.Stdout)
-	log.SetFlags(log.Ltime)
+	//log.SetOutput(os.Stdout)
+	//log.SetFlags(log.Ltime)
+
 }
 
 //NewMultiplexer creates new basic multiplexer
@@ -27,10 +26,13 @@ func (m *Multiplexer) AddWorker(w Worker) {
 
 //Multiplex starts N goroutines configured in []config
 func (m *Multiplexer) Multiplex(ctx context.Context, x interface{}) <-chan Result {
+
+	log := NewLogger()
+
 	if len(m.workers) == 0 {
 		panic("no worker added")
 	}
-	log.Printf("forked...\n")
+	log.LogInfo(RequestID(ctx), "", "forked..")
 	multiplexdResultStream := make(chan Result)
 
 	go func() {
@@ -43,7 +45,11 @@ func (m *Multiplexer) Multiplex(ctx context.Context, x interface{}) <-chan Resul
 			go manage(ctx, in, multiplexdResultStream)
 		}
 		wg.Wait()
-		log.Printf("joined...\n")
+		log.LogInfo(RequestID(ctx), "", "joined..")
 	}()
 	return multiplexdResultStream
+}
+
+func RequestID(ctx context.Context) string {
+	return ctx.Value(CtxRequestID).(string)
 }

@@ -29,11 +29,14 @@ func TestHTTPForkJoin(t *testing.T) {
 	defer conn.Close()
 	c := h.NewHTTPForkJoinServiceClient(conn)
 
-	req := h.HTTPRequest{Messages: makeValidRequests()}
+	req := h.HTTPRequest{Id: "BIN1", Messages: makeValidRequests()}
 	stream, err := c.FanoutFanin(context.Background(), &req)
 	if err != nil {
 		t.Errorf("GRPC error call should have not failed with %v", err)
 	}
+
+	res := []*h.HTTPResponse{}
+
 	for {
 		response, err := stream.Recv()
 		if err == io.EOF {
@@ -59,6 +62,10 @@ func TestHTTPForkJoin(t *testing.T) {
 		if len(response.Message.Headers) == 0 {
 			t.Errorf("response headers is empty")
 		}
+		res = append(res, response)
+	}
+	if len(res) != 2 {
+		t.Error("there should be a 2 responses")
 	}
 }
 
@@ -95,6 +102,41 @@ func TestInvalidHTTPURLForkJoin(t *testing.T) {
 	}
 
 	if res[1].Errors[0].Code != h.ErrorCode_ConcurrencyContextError {
+		t.Errorf("there should be error code: %v", h.ErrorCode_ConnectionError)
+	}
+}
+
+func TestSlowHTTPResponse(t *testing.T) {
+	conn := makeGrpcConn()
+	defer conn.Close()
+	c := h.NewHTTPForkJoinServiceClient(conn)
+
+	req := h.HTTPRequest{Messages: makeSlowResponseRequests()}
+	stream, err := c.FanoutFanin(context.Background(), &req)
+	if err != nil {
+		t.Errorf("GRPC error call should have not failed with %v", err)
+	}
+
+	res := []*h.HTTPResponse{}
+
+	for {
+		response, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("%v.FanoutFanin = _, %v", c, err)
+		}
+		res = append(res, response)
+	}
+
+	if len(res) != 1 {
+		t.Error("there should be a 1 errors")
+	}
+
+	log.Printf("code %v", res[0].Errors[0].Code)
+
+	if res[0].Errors[0].Code != h.ErrorCode_ConnectionError {
 		t.Errorf("there should be error code: %v", h.ErrorCode_ConnectionError)
 	}
 }
@@ -169,6 +211,13 @@ func makeInValidURLRequests() []*h.Message {
 	delayedMesg := &h.Message{Method: h.Message_POST, URL: "http://localhost:8000/healthz"}
 	msgs := []*h.Message{}
 	msgs = append(msgs, invalidURLMsg)
+	msgs = append(msgs, delayedMesg)
+	return msgs
+}
+
+func makeSlowResponseRequests() []*h.Message {
+	delayedMesg := &h.Message{Method: h.Message_POST, URL: "http://localhost:8000/healthz"}
+	msgs := []*h.Message{}
 	msgs = append(msgs, delayedMesg)
 	return msgs
 }

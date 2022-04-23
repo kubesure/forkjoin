@@ -18,12 +18,14 @@ message Message {
   map<string,string> headers = 4;
   string payload = 5;
   uint32 statusCode = 6;
+  string Id = 7;
   
 }
 
 message HTTPRequest {
   string api = 1;
   repeated Message messages = 2;
+  string Id = 3;
 }
 
 message HTTPResponse {

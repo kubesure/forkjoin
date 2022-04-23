@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	fj "github.com/kubesure/forkjoin"
@@ -16,9 +17,7 @@ type DispatchServer struct {
 
 //FanoutFanin Fans out each http message to http dispatch works using the fork join interface
 func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinService_FanoutFaninServer) error {
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.WithValue(context.Background(), fj.CtxRequestID, request.Id)
 
 	mtplx := fj.NewMultiplexer()
 	for i, m := range request.Messages {
@@ -28,7 +27,7 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 			URL:     m.URL,
 			Payload: m.Payload,
 			Headers: m.Headers,
-			ID:      i,
+			ID:      fmt.Sprint(i),
 		}
 		reqMsg := fj.HTTPRequest{Message: msg}
 		mtplx.AddWorker(&DispatchWorker{Request: reqMsg})
@@ -70,7 +69,7 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 	return nil
 }
 
-func makeErrRes(code fj.ErrorCode, msg string) *HTTPResponse {
+func makeErrRes(code fj.EventCode, msg string) *HTTPResponse {
 	fjerrors := []*Error{}
 	fjerr := Error{Code: ErrorCode(code), Message: msg}
 	fjerrors = append(fjerrors, &fjerr)
