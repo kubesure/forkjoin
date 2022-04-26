@@ -38,8 +38,7 @@ func init() {
 
 func TestChecker(t *testing.T) {
 	//client can cancel entire processing
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.WithValue(context.Background(), CtxRequestID, "Test")
 	var pc prospectcompany = prospectcompany{}
 	m := NewMultiplexer()
 	m.AddWorker(&centralbankchecker{})
@@ -62,21 +61,21 @@ func TestChecker(t *testing.T) {
 }
 
 //example worker
-func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}) <-chan Result {
+func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Result {
 	resultStream := make(chan Result)
 
 	go func() {
 		defer close(resultStream)
 		pc, ok := x.(prospectcompany)
 		if !ok {
-			resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
+			resultStream <- Result{Err: &FJError{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 			return
 		}
 		n := randInt(15)
 		log.Printf("Sleeping %d seconds...\n", n)
 		for {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			case <-time.After((time.Duration(n) * time.Second)):
 				pc.isMatch = true
@@ -88,21 +87,21 @@ func (c *centralbankchecker) Work(done <-chan interface{}, x interface{}) <-chan
 	return resultStream
 }
 
-func (p *policechecker) Work(done <-chan interface{}, x interface{}) <-chan Result {
+func (p *policechecker) Work(ctx context.Context, x interface{}) <-chan Result {
 	resultStream := make(chan Result)
 
 	go func() {
 		defer close(resultStream)
 		pc, ok := x.(prospectcompany)
 		if !ok {
-			resultStream <- Result{Err: &FJerror{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
+			resultStream <- Result{Err: &FJError{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 			return
 		}
 		n := randInt(15)
 		log.Printf("Sleeping %d seconds...\n", n)
 		for {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			case <-time.After((time.Duration(n) * time.Second)):
 				pc.isMatch = true
