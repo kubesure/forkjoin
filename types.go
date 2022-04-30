@@ -111,15 +111,3 @@ type LogEvent struct {
 type StandardLogger struct {
 	*logrus.Logger
 }
-
-//Request ID key passsed as data in context
-type ctxKey int
-
-const (
-	CtxRequestID ctxKey = iota
-)
-
-/*
-func CtxRequestID(ctx context.Context, value string) string {
-	return ctx.Value(ctxRequestID).(string)
-}*/

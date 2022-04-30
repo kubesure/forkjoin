@@ -37,13 +37,12 @@ func init() {
 }
 
 func TestChecker(t *testing.T) {
-	//client can cancel entire processing
-	ctx := context.WithValue(context.Background(), CtxRequestID, "Test")
+	//client can cancel entire processing if needed
 	var pc prospectcompany = prospectcompany{}
 	m := NewMultiplexer()
 	m.AddWorker(&centralbankchecker{})
 	m.AddWorker(&policechecker{})
-	resultStream := m.Multiplex(ctx, pc)
+	resultStream := m.Multiplex(context.Background(), pc)
 	for r := range resultStream {
 		if r.Err != nil {
 			t.Errorf("error not expected id: %v code: %v message: %v\n", r.ID, r.Err.Code, r.Err.Message)

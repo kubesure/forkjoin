@@ -9,6 +9,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//Request ID key passsed as data in context
+type ctxKey int
+
+const (
+	CtxRequestID ctxKey = iota
+)
+
 //DispatchServer implements GRPC server interface FannoutFannin
 type DispatchServer struct {
 	UnimplementedHTTPForkJoinServiceServer
@@ -16,7 +23,7 @@ type DispatchServer struct {
 
 //FanoutFanin Fans out each http message to http dispatch works using the fork join interface
 func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinService_FanoutFaninServer) error {
-	ctx := context.WithValue(context.Background(), fj.CtxRequestID, request.Id)
+	ctx := context.WithValue(context.Background(), CtxRequestID, request.Id)
 	log := fj.NewLogger()
 	mtplx := fj.NewMultiplexer()
 	for i, m := range request.Messages {
@@ -33,9 +40,9 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 	}
 
 	resultStream := mtplx.Multiplex(ctx, nil)
+	log.LogInfo(RequestID(ctx), "Forked")
 	for result := range resultStream {
 		if result.Err != nil {
-			//log.Printf("Error for id: %v %v %v\n", result.ID, result.Err.Code, result.Err.Message)
 			err := stream.Send(makeErrRes(result.Err.Code, result.Err.Message))
 			if err != nil {
 				//TODO: add message id to log if possible
@@ -70,6 +77,7 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 			}
 		}
 	}
+	log.LogInfo(RequestID(ctx), "Joined")
 	return nil
 }
 
@@ -79,4 +87,8 @@ func makeErrRes(code fj.EventCode, msg string) *HTTPResponse {
 	fjerrors = append(fjerrors, &fjerr)
 	r := HTTPResponse{Errors: fjerrors}
 	return &r
+}
+
+func RequestID(ctx context.Context) string {
+	return ctx.Value(CtxRequestID).(string)
 }
