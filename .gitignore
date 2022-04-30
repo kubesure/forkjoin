@@ -18,3 +18,5 @@ scrap
 httpmtlsserver
 httptlsserver
 httpinsecureserver
+cmd/forkjoin-mac
+data/bulk.json

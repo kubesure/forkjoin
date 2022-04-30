@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
@@ -20,12 +19,14 @@ type DispatchWorker struct {
 //func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}) <-chan f.Result {
 func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Result {
 	resultStream := make(chan f.Result)
+	log := f.NewLogger()
 
 	go func() {
 		defer close(resultStream)
 
 		if len(hdw.Request.Message.Method) == 0 || len(hdw.Request.Message.URL) == 0 {
-			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestError, Message: "http dispatch configuration not passed"}}
+			log.LogInvalidRequest(f.RequestID(ctx), hdw.Request.Message.ID, "Method or URL is empty")
+			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestError, Message: "Method or URL is empty"}}
 			return
 		}
 
@@ -40,7 +41,8 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 		}
 
 		if !validMethod {
-			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestError, Message: "http method not found"}}
+			log.LogInvalidRequest(f.RequestID(ctx), hdw.Request.Message.ID, fmt.Sprintf("Method %v is invalid", hdw.Request.Message.Method))
+			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestError, Message: fmt.Sprintf("Method %v is invalid", hdw.Request.Message.Method)}}
 			return
 		}
 		//httpDispatch(done, hdw.Request, resultStream)
@@ -51,10 +53,10 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 
 //func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
 func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
-
 	ctxReq, cancelReq := context.WithCancel(context.Background())
 	defer cancelReq()
 	responseStream := make(chan f.Result)
+	log := f.NewLogger()
 
 	go func() {
 		defer close(responseStream)
@@ -71,14 +73,16 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 		res, err := client.Do(req)
 
 		if ctx.Err() != nil && res == nil {
-			log.Printf("Context cancelled")
-			responseStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("request aborted %v", err)}}
+			log.LogAbortedRequest(f.RequestID(ctx), reqMsg.Message.ID, "Aborted")
+			responseStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("Aborted %v", err)}}
 		} else if err != nil {
-			responseStream <- f.Result{Err: &f.FJError{Code: f.ConnectionError, Message: fmt.Sprintf("error in request call %v", err)}}
+			log.LogRequestDispatchError(f.RequestID(ctx), reqMsg.Message.ID, err.Error())
+			responseStream <- f.Result{Err: &f.FJError{Code: f.ConnectionError, Message: fmt.Sprintf("Error in dispatching request: %v", err)}}
 		} else {
 			bb, err := ioutil.ReadAll(res.Body)
 			if err != nil {
-				responseStream <- f.Result{Err: &f.FJError{Code: f.ResponseError, Message: "error reading http body"}}
+				log.LogResponseError(f.RequestID(ctx), reqMsg.Message.ID, err.Error())
+				responseStream <- f.Result{Err: &f.FJError{Code: f.ResponseError, Message: fmt.Sprintf("Error reading http response: %v", err)}}
 			}
 
 			hr := f.HTTPResponse{
@@ -97,16 +101,16 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 				}
 			}
 			defer res.Body.Close()
-			responseStream <- f.Result{X: hr}
+			responseStream <- f.Result{ID: reqMsg.ID, X: hr}
 		}
 	}()
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("done: http request taking too long aborting request")
+			log.LogAbortedRequest(f.RequestID(ctx), reqMsg.Message.ID, "Signal received")
 			cancelReq()
-			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("request aborted")}}
+			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("Request aborted took longer than expected")}}
 			return
 		case r := <-responseStream:
 			resultStream <- r

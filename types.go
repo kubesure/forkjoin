@@ -9,7 +9,7 @@ import (
 
 //Result returned by checks with the result
 type Result struct {
-	ID  int
+	ID  string
 	X   interface{}
 	Err *FJError
 }
@@ -34,6 +34,7 @@ const (
 	ConnectionError
 	ConcurrencyContextError
 	RequestAborted
+	RequestInfo
 	Info
 )
 

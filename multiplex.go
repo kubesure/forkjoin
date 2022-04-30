@@ -32,7 +32,7 @@ func (m *Multiplexer) Multiplex(ctx context.Context, x interface{}) <-chan Resul
 	if len(m.workers) == 0 {
 		panic("no worker added")
 	}
-	log.LogInfo(RequestID(ctx), "", "forked..")
+	log.LogInfo(RequestID(ctx), "Forked")
 	multiplexdResultStream := make(chan Result)
 
 	go func() {
@@ -45,7 +45,7 @@ func (m *Multiplexer) Multiplex(ctx context.Context, x interface{}) <-chan Resul
 			go manage(ctx, in, multiplexdResultStream)
 		}
 		wg.Wait()
-		log.LogInfo(RequestID(ctx), "", "joined..")
+		log.LogInfo(RequestID(ctx), "Joined")
 	}()
 	return multiplexdResultStream
 }

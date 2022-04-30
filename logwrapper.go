@@ -16,18 +16,36 @@ func NewLogger() *StandardLogger {
 }
 
 var (
-	internalError   = LogEvent{InternalError, "Request Id Message Id: Internal Error: %s %s %s"}
-	requestError    = LogEvent{RequestError, "Request Id Message Id: Invalid Request: %s %s %v"}
-	abortRequest    = LogEvent{RequestAborted, "Request Id Message Id: Request Aborted: %s %s %v"}
-	responseError   = LogEvent{ResponseError, "Request Id Message Id: Response error: %s %s %v"}
-	connectionError = LogEvent{ConnectionError, "Request Id Message Id: Connection error: %s %s %v"}
-	info            = LogEvent{Info, "Request Id %s Message Id: %s: %s \n"}
+	internalError        = LogEvent{InternalError, "Request Id: %s Message Id: %s Internal Error: %v"}
+	invalidRequest       = LogEvent{RequestError, "Request Id: %s Message Id: Invalid Request: %v"}
+	requestDispatchError = LogEvent{RequestError, "Request Id: %s Message Id: %s Request Dispatch Error: %v"}
+	abortRequest         = LogEvent{RequestAborted, "Request Id: %s Message Id: %s Abort Request: %v"}
+	responseError        = LogEvent{ResponseError, "Request Id: %s Message Id: %s Response error: %v"}
+	connectionError      = LogEvent{ConnectionError, "Request Id: %s Message Id: %s Connection error: %v"}
+	infoRequest          = LogEvent{RequestInfo, "Request Id: %s Message Id: %s: %s"}
+	info                 = LogEvent{Info, "Request Id: %s %s "}
 )
 
-func (l *StandardLogger) LogAbortedRequest() {
-
+func (l *StandardLogger) LogInvalidRequest(requestID, messageID, message string) {
+	l.Errorf(invalidRequest.message, requestID, messageID, message)
 }
 
-func (l *StandardLogger) LogInfo(requestID, messageID, message string) {
-	l.Infof(info.message, requestID, messageID, message)
+func (l *StandardLogger) LogResponseError(requestID, messageID, message string) {
+	l.Errorf(responseError.message, requestID, messageID, message)
+}
+
+func (l *StandardLogger) LogRequestDispatchError(requestID, messageID, message string) {
+	l.Errorf(requestDispatchError.message, requestID, messageID, message)
+}
+
+func (l *StandardLogger) LogAbortedRequest(requestID, messageID, message string) {
+	l.Errorf(abortRequest.message, requestID, messageID, message)
+}
+
+func (l *StandardLogger) LogRequestInfo(requestID, message string) {
+	l.Infof(infoRequest.message, requestID, message)
+}
+
+func (l *StandardLogger) LogInfo(requestID, message string) {
+	l.Infof(info.message, requestID, message)
 }
