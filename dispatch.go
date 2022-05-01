@@ -6,7 +6,6 @@ import (
 )
 
 //implements the template worker algo for all workers and dispatches work to worker
-//func dispatch(done <-chan interface{}, i input, w Worker, pulseInterval time.Duration) (<-chan Result, <-chan heartbeat) {
 func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duration) (<-chan Result, <-chan heartbeat) {
 
 	pulseStream := make(chan heartbeat)
@@ -19,8 +18,6 @@ func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duratio
 		result := w.Work(ctx, i.x)
 		for {
 			select {
-			/*case <-ctx.Done():
-			return*/
 			case r := <-result:
 				resultStream <- r
 				quitPulstStream <- struct{}{}
@@ -43,9 +40,6 @@ func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duratio
 		//send pulse at a interval or 1 second
 		for {
 			select {
-			/*case <-done:
-			return
-			*/
 			case <-quitPulstStream:
 				return
 			case <-pulse:

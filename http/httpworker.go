@@ -16,7 +16,6 @@ type DispatchWorker struct {
 }
 
 //Work dispatches http request and stream a response back
-//func (hdw *DispatchWorker) Work(done <-chan interface{}, x interface{}) <-chan f.Result {
 func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Result {
 	resultStream := make(chan f.Result)
 	log := f.NewLogger()
@@ -51,7 +50,6 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 	return resultStream
 }
 
-//func httpDispatch(done <-chan interface{}, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
 func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
 	ctxReq, cancelReq := context.WithCancel(context.Background())
 	defer cancelReq()

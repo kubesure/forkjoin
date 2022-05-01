@@ -3,24 +3,15 @@ package forkjoin
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
 	"time"
 )
-
-func init() {
-	log.SetOutput(os.Stdout)
-	log.SetFlags(log.Ltime)
-}
 
 //goroutine waits for response from worker on work channel.
 func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+
 	defer cancel()
-	//TODO: rework and test defer and done sequence
 	defer i.wg.Done()
-	workerDone := make(chan interface{})
-	defer close(workerDone)
 
 	log := NewLogger()
 
@@ -42,8 +33,6 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 			lastPulseT = currPulseT
 			if diff > 2 {
 				log.LogInfo(fmt.Sprint(i.id), "Heartbeat inconsistent spawning new woker goroutine...")
-				close(workerDone)
-				workerDone = make(chan interface{})
 				resultStream, pulseStream = dispatch(ctx, i, i.worker, pulseInterval)
 			}
 		case r, _ := <-resultStream:

@@ -21,6 +21,7 @@ type DispatchServer struct {
 	UnimplementedHTTPForkJoinServiceServer
 }
 
+// FIXME: Validate Input
 //FanoutFanin Fans out each http message to http dispatch works using the fork join interface
 func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinService_FanoutFaninServer) error {
 	ctx := context.WithValue(context.Background(), CtxRequestID, request.Id)
@@ -29,11 +30,13 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 	for i, m := range request.Messages {
 		value, _ := Message_Method_name[int32(m.Method)]
 		msg := fj.HTTPMessage{
-			Method:  fj.METHOD(value),
-			URL:     m.URL,
-			Payload: m.Payload,
-			Headers: m.Headers,
-			ID:      fmt.Sprint(i),
+			Method:         fj.METHOD(value),
+			URL:            m.URL,
+			Payload:        m.Payload,
+			Headers:        m.Headers,
+			ActiveDeadLine: m.ActiveDeadLine,
+			// TODO: is this id same as worker id assigned in multipex function can it be same? who should assign id
+			ID: fmt.Sprint(i),
 		}
 		reqMsg := fj.HTTPRequest{Message: msg}
 		mtplx.AddWorker(&DispatchWorker{Request: reqMsg})
@@ -52,6 +55,7 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 		} else {
 			response, ok := result.X.(fj.HTTPResponse)
 			if !ok {
+				// FIXME: duplicate logs message string
 				log.LogResponseError(result.ID, "nil", "type assertion error http.Response not found")
 				log.Println("type assertion err http.Response not found")
 				err := stream.Send(makeErrRes(fj.InternalError, "type assertion error http.Response not found"))

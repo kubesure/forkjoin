@@ -5,12 +5,6 @@ import (
 	"sync"
 )
 
-func init() {
-	//log.SetOutput(os.Stdout)
-	//log.SetFlags(log.Ltime)
-
-}
-
 //NewMultiplexer creates new basic multiplexer
 func NewMultiplexer() Multiplexer {
 	return Multiplexer{}
