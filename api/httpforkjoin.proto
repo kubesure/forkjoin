@@ -19,7 +19,7 @@ message Message {
   string payload = 5;
   uint32 statusCode = 6;
   string Id = 7;
-  
+  uint32 activeDeadLine = 8;  
 }
 
 message HTTPRequest {
