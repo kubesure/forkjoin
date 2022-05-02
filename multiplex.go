@@ -33,7 +33,7 @@ func (m *Multiplexer) Multiplex(ctx context.Context, x interface{}) <-chan Resul
 		for i, worker := range m.workers {
 			wg.Add(1)
 			w := worker
-			in := input{id: i, x: x, wg: &wg, worker: w}
+			in := input{id: i + 1, x: x, wg: &wg, worker: w}
 			go manage(ctx, in, multiplexdResultStream)
 		}
 		wg.Wait()
