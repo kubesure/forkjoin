@@ -69,8 +69,10 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 		}
 
 		client := &http.Client{}
+		// TODO: add suport of secure connections
 		res, err := client.Do(req)
 
+		// FIXME: goroutine leak
 		if ctx.Err() != nil && res == nil {
 			log.LogAbortedRequest(RequestID(ctx), reqMsg.Message.ID, "Aborted")
 			responseStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("Aborted %v", err)}}
