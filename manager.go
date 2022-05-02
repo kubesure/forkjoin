@@ -8,8 +8,7 @@ import (
 
 //goroutine waits for response from worker on work channel.
 func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(i.worker.ActiveDeadLineSeconds())*time.Second)
 	defer cancel()
 	defer i.wg.Done()
 
@@ -32,7 +31,7 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 			diff := int32(currPulseT.Sub(lastPulseT).Seconds())
 			lastPulseT = currPulseT
 			if diff > 2 {
-				log.LogInfo(fmt.Sprint(i.id), "Heartbeat inconsistent spawning new woker goroutine...")
+				log.LogInfo(fmt.Sprint(i.id), "Heartbeat inconsistent spawning new worker goroutine")
 				resultStream, pulseStream = dispatch(ctx, i, i.worker, pulseInterval)
 			}
 		case r, _ := <-resultStream:

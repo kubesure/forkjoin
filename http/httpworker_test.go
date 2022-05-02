@@ -87,7 +87,7 @@ func TestHttpPOSTDispatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{reqMsg})
+	m.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: 10})
 	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err != nil {
@@ -120,7 +120,7 @@ func TestHttpGETDeplyedResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{reqMsg})
+	m.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: 10})
 	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err != nil {
@@ -137,7 +137,7 @@ func TestHttpURLError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{reqMsg})
+	m.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: 10})
 	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		log.Printf("code: %v Message: %v", r.Err.Code, r.Err.Message)

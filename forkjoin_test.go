@@ -26,10 +26,10 @@ type shareholder struct {
 }
 
 //Worker checks prospectcompany against police records
-type policechecker struct{}
+type policechecker struct{ activeDeadLine uint32 }
 
 //Worker checks prospectcompany against central bank records
-type centralbankchecker struct{}
+type centralbankchecker struct{ activeDeadLine uint32 }
 
 func init() {
 	log.SetOutput(os.Stdout)
@@ -40,11 +40,12 @@ func TestChecker(t *testing.T) {
 	//client can cancel entire processing if needed
 	var pc prospectcompany = prospectcompany{}
 	m := NewMultiplexer()
-	m.AddWorker(&centralbankchecker{})
-	m.AddWorker(&policechecker{})
+	m.AddWorker(&centralbankchecker{activeDeadLine: 10})
+	m.AddWorker(&policechecker{activeDeadLine: 10})
 	resultStream := m.Multiplex(context.Background(), pc)
 	for r := range resultStream {
 		if r.Err != nil {
+			// FIXME: write individual tests
 			t.Errorf("error not expected id: %v code: %v message: %v\n", r.ID, r.Err.Code, r.Err.Message)
 		} else {
 			pc, ok := r.X.(prospectcompany)
@@ -59,6 +60,10 @@ func TestChecker(t *testing.T) {
 	}
 }
 
+func (c *centralbankchecker) ActiveDeadLineSeconds() uint32 {
+	return c.activeDeadLine
+}
+
 //example worker
 func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Result {
 	resultStream := make(chan Result)
@@ -71,10 +76,12 @@ func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Res
 			return
 		}
 		n := randInt(15)
+		//n := 15
 		log.Printf("Sleeping %d seconds...\n", n)
 		for {
 			select {
 			case <-ctx.Done():
+				resultStream <- Result{Err: &FJError{Code: RequestAborted, Message: "Aborted call active deadline second exceeded"}}
 				return
 			case <-time.After((time.Duration(n) * time.Second)):
 				pc.isMatch = true
@@ -84,6 +91,10 @@ func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Res
 		}
 	}()
 	return resultStream
+}
+
+func (p *policechecker) ActiveDeadLineSeconds() uint32 {
+	return p.activeDeadLine
 }
 
 func (p *policechecker) Work(ctx context.Context, x interface{}) <-chan Result {
@@ -97,10 +108,12 @@ func (p *policechecker) Work(ctx context.Context, x interface{}) <-chan Result {
 			return
 		}
 		n := randInt(15)
+		//n := 15
 		log.Printf("Sleeping %d seconds...\n", n)
 		for {
 			select {
 			case <-ctx.Done():
+				resultStream <- Result{Err: &FJError{Code: RequestAborted, Message: "Aborted call active deadline second exceeded"}}
 				return
 			case <-time.After((time.Duration(n) * time.Second)):
 				pc.isMatch = true

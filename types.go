@@ -99,6 +99,7 @@ func (hm *HTTPMessage) Add(key, value string) {
 //Worker will be implement the work to be done and exit on the done channel
 type Worker interface {
 	Work(ctx context.Context, x interface{}) <-chan Result
+	ActiveDeadLineSeconds() uint32
 }
 
 //LogEvent stores log message
@@ -110,4 +111,8 @@ type LogEvent struct {
 // StandardLogger enforces specific log message formats
 type StandardLogger struct {
 	*logrus.Logger
+}
+
+type BaseWorker struct {
+	ActiveDealine int32
 }

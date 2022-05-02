@@ -12,7 +12,8 @@ import (
 
 //DispatchWorker dispatches to the configured URL
 type DispatchWorker struct {
-	Request f.HTTPRequest
+	Request               f.HTTPRequest
+	activeDeadLineSeconds uint32
 }
 
 //Work dispatches http request and stream a response back
@@ -116,4 +117,8 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 		default:
 		}
 	}
+}
+
+func (hdw *DispatchWorker) ActiveDeadLineSeconds() uint32 {
+	return hdw.activeDeadLineSeconds
 }

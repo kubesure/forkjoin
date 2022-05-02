@@ -34,12 +34,12 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 			URL:            m.URL,
 			Payload:        m.Payload,
 			Headers:        m.Headers,
-			ActiveDeadLine: m.ActiveDeadLine,
+			ActiveDeadLine: m.ActiveDeadLineSeconds,
 			// TODO: is this id same as worker id assigned in multipex function can it be same? who should assign id
 			ID: fmt.Sprint(i),
 		}
 		reqMsg := fj.HTTPRequest{Message: msg}
-		mtplx.AddWorker(&DispatchWorker{Request: reqMsg})
+		mtplx.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: msg.ActiveDeadLine})
 	}
 
 	resultStream := mtplx.Multiplex(ctx, nil)
