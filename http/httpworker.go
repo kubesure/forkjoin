@@ -45,22 +45,19 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestError, Message: fmt.Sprintf("Method %v is invalid", hdw.Request.Message.Method)}}
 			return
 		}
-		//httpDispatch(done, hdw.Request, resultStream)
 		httpDispatch(ctx, hdw.Request, resultStream)
 	}()
 	return resultStream
 }
 
 func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
-	ctxReq, cancelReq := context.WithCancel(context.Background())
-	defer cancelReq()
 	responseStream := make(chan f.Result)
 	log := f.NewLogger()
 
 	go func() {
 		defer close(responseStream)
 		req, _ := http.NewRequestWithContext(
-			ctxReq, string(reqMsg.Message.Method),
+			ctx, string(reqMsg.Message.Method),
 			reqMsg.Message.URL,
 			strings.NewReader(reqMsg.Message.Payload))
 
@@ -72,10 +69,9 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 		// TODO: add suport of secure connections
 		res, err := client.Do(req)
 
-		// FIXME: goroutine leak
 		if ctx.Err() != nil && res == nil {
 			log.LogAbortedRequest(RequestID(ctx), reqMsg.Message.ID, "Aborted")
-			responseStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("Aborted %v", err)}}
+			responseStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("Request aborted took longer than expected %v", err)}}
 		} else if err != nil {
 			log.LogRequestDispatchError(RequestID(ctx), reqMsg.Message.ID, err.Error())
 			responseStream <- f.Result{Err: &f.FJError{Code: f.ConnectionError, Message: fmt.Sprintf("Error in dispatching request: %v", err)}}
@@ -102,17 +98,12 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 				}
 			}
 			defer res.Body.Close()
-			responseStream <- f.Result{ID: reqMsg.ID, X: hr}
+			responseStream <- f.Result{ID: RequestID(ctx), X: hr}
 		}
 	}()
 
 	for {
 		select {
-		case <-ctx.Done():
-			log.LogAbortedRequest(RequestID(ctx), reqMsg.Message.ID, "Signal received")
-			cancelReq()
-			resultStream <- f.Result{Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("Request aborted took longer than expected")}}
-			return
 		case r := <-responseStream:
 			resultStream <- r
 			return

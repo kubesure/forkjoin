@@ -7,6 +7,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+//TODO: Add more details to types
+
 //Result returned by checks with the result
 type Result struct {
 	ID  string

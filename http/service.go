@@ -52,15 +52,6 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 				return status.Errorf(codes.Internal, fmt.Sprintf("Error while request id: %s message id: %s writing to stream", result.ID, response.Message.ID), err)
 			}
 		} else {
-			/*if !ok {
-				log.LogResponseError(result.ID, "nil", "type assertion error http.Response not found")
-				log.Println("type assertion err http.Response not found")
-				err := stream.Send(makeErrRes(fj.InternalError, "type assertion error http.Response not found"))
-				if err != nil {
-					log.LogResponseError(result.ID, response.Message.ID, fmt.Sprintf("Error while writing to stream: %v", err.Error()))
-					return status.Errorf(codes.Internal, "Error while writing to stream", err)
-				}
-			}*/ //else {
 			method, _ := Message_Method_value[string(response.Message.Method)]
 			m := &Message{
 				URL:        response.Message.URL,
@@ -69,13 +60,12 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 				Payload:    response.Message.Payload,
 				StatusCode: uint32(response.Message.StatusCode),
 			}
-			r := HTTPResponse{Message: m}
+			r := HTTPResponse{Id: result.ID, Message: m}
 			err := stream.Send(&r)
 			if err != nil {
 				return err
 			}
 		}
-		//}
 	}
 	log.LogInfo(RequestID(ctx), "Joined")
 	return nil
