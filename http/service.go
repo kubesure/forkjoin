@@ -21,7 +21,7 @@ type DispatchServer struct {
 	UnimplementedHTTPForkJoinServiceServer
 }
 
-// FIXME: Validate Input
+// TODO: Validate Input
 //FanoutFanin Fans out each http message to http dispatch works using the fork join interface
 func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinService_FanoutFaninServer) error {
 	ctx := context.WithValue(context.Background(), CtxRequestID, request.Id)
@@ -46,6 +46,7 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 	for result := range resultStream {
 		response, _ := result.X.(fj.HTTPResponse)
 		if result.Err != nil {
+			// TODO: should it return or process next message
 			err := stream.Send(makeErrRes(result.Err.Code, result.Err.Message))
 			if err != nil {
 				log.LogResponseError(result.ID, response.Message.ID, fmt.Sprintf("Error while writing to stream: %v", err.Error()))
@@ -63,7 +64,8 @@ func (s *DispatchServer) FanoutFanin(request *HTTPRequest, stream HTTPForkJoinSe
 			r := HTTPResponse{Id: result.ID, Message: m}
 			err := stream.Send(&r)
 			if err != nil {
-				return err
+				log.LogResponseError(result.ID, response.Message.ID, fmt.Sprintf("Error while writing to stream: %v", err.Error()))
+				return status.Errorf(codes.Internal, fmt.Sprintf("Error while request id: %s message id: %s writing to stream", result.ID, response.Message.ID), err)
 			}
 		}
 	}
