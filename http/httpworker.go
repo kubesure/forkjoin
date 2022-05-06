@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,7 +14,7 @@ import (
 
 //DispatchWorker dispatches to the configured URL
 type DispatchWorker struct {
-	Request               f.HTTPRequest
+	Request               HTTPRequest
 	activeDeadLineSeconds uint32
 }
 
@@ -32,7 +34,7 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 		}
 
 		var validMethod bool = false
-		var methods = []f.METHOD{f.GET, f.POST, f.PUT, f.PATCH}
+		var methods = []METHOD{GET, POST, PUT, PATCH}
 
 		for _, method := range methods {
 			if hdw.Request.Message.Method == method {
@@ -52,7 +54,7 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 	return resultStream
 }
 
-func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<- f.Result) {
+func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f.Result) {
 	responseStream := make(chan f.Result)
 	log := f.NewLogger()
 
@@ -67,8 +69,25 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 			req.Header.Add(k, v)
 		}
 
-		client := &http.Client{}
-		// TODO: add suport of secure connections
+		var client *http.Client
+
+		if reqMsg.Message.Authentication == NONE {
+			client = &http.Client{}
+		} else if reqMsg.Message.Authentication == BASIC {
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM([]byte(reqMsg.Message.BasicAtuhCredentials.ServerCertificate))
+			client = &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						RootCAs: caCertPool,
+					},
+				},
+			}
+			req.SetBasicAuth(reqMsg.Message.BasicAtuhCredentials.UserName,
+				reqMsg.Message.BasicAtuhCredentials.UserName)
+		}
+
+		//client := &http.Client{}
 		res, err := client.Do(req)
 
 		if ctx.Err() != nil && res == nil {
@@ -109,9 +128,9 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 	}
 }
 
-func makeResponse(reqMsg f.HTTPRequest, res *http.Response, bb []byte) f.HTTPResponse {
-	hr := f.HTTPResponse{
-		Message: f.HTTPMessage{
+func makeResponse(reqMsg HTTPRequest, res *http.Response, bb []byte) HTTPResponse {
+	hr := HTTPResponse{
+		Message: HTTPMessage{
 			ID:             reqMsg.Message.ID,
 			StatusCode:     res.StatusCode,
 			Method:         reqMsg.Message.Method,
@@ -123,9 +142,9 @@ func makeResponse(reqMsg f.HTTPRequest, res *http.Response, bb []byte) f.HTTPRes
 	return hr
 }
 
-func makeErrorResponse(reqMsg f.HTTPRequest, resStatus int) f.HTTPResponse {
-	hr := f.HTTPResponse{
-		Message: f.HTTPMessage{
+func makeErrorResponse(reqMsg HTTPRequest, resStatus int) HTTPResponse {
+	hr := HTTPResponse{
+		Message: HTTPMessage{
 			ID:             reqMsg.Message.ID,
 			StatusCode:     resStatus,
 			Method:         reqMsg.Message.Method,

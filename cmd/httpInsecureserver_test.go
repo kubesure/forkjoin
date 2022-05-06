@@ -29,13 +29,13 @@ func TestHTTPForkJoin(t *testing.T) {
 	defer conn.Close()
 	c := h.NewHTTPForkJoinServiceClient(conn)
 
-	req := h.HTTPRequest{Id: "BIN1", Messages: makeValidRequests()}
+	req := h.Request{Id: "BIN1", Messages: makeValidRequests()}
 	stream, err := c.FanoutFanin(context.Background(), &req)
 	if err != nil {
 		t.Errorf("GRPC error call should have not failed with %v", err)
 	}
 
-	res := []*h.HTTPResponse{}
+	res := []*h.Response{}
 
 	for {
 		response, err := stream.Recv()
@@ -74,13 +74,13 @@ func TestInvalidHTTPURLForkJoin(t *testing.T) {
 	defer conn.Close()
 	c := h.NewHTTPForkJoinServiceClient(conn)
 
-	req := h.HTTPRequest{Messages: makeInValidURLRequests()}
+	req := h.Request{Messages: makeInValidURLRequests()}
 	stream, err := c.FanoutFanin(context.Background(), &req)
 	if err != nil {
 		t.Errorf("GRPC error call should have not failed with %v", err)
 	}
 
-	res := []*h.HTTPResponse{}
+	res := []*h.Response{}
 
 	for {
 		response, err := stream.Recv()
@@ -111,13 +111,13 @@ func TestSlowHTTPResponse(t *testing.T) {
 	defer conn.Close()
 	c := h.NewHTTPForkJoinServiceClient(conn)
 
-	req := h.HTTPRequest{Messages: makeSlowResponseRequests()}
+	req := h.Request{Messages: makeSlowResponseRequests()}
 	stream, err := c.FanoutFanin(context.Background(), &req)
 	if err != nil {
 		t.Errorf("GRPC error call should have not failed with %v", err)
 	}
 
-	res := []*h.HTTPResponse{}
+	res := []*h.Response{}
 
 	for {
 		response, err := stream.Recv()
@@ -146,13 +146,13 @@ func TestInvalidRequestsCfgHTTPForkJoin(t *testing.T) {
 	defer conn.Close()
 	c := h.NewHTTPForkJoinServiceClient(conn)
 
-	req := h.HTTPRequest{Messages: makeInValidRequestsCfg()}
+	req := h.Request{Messages: makeInValidRequestsCfg()}
 	stream, err := c.FanoutFanin(context.Background(), &req)
 	if err != nil {
 		t.Errorf("GRPC error call should have not failed with %v", err)
 	}
 
-	res := []*h.HTTPResponse{}
+	res := []*h.Response{}
 
 	for {
 		response, err := stream.Recv()

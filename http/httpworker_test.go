@@ -15,8 +15,8 @@ func init() {
 }
 
 func TestInvalidHttpMethod(t *testing.T) {
-	msg := f.HTTPMessage{URL: "https://httpbin.org/anything"}
-	reqMsg := f.HTTPRequest{Message: msg}
+	msg := HTTPMessage{URL: "https://httpbin.org/anything"}
+	reqMsg := HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
@@ -31,8 +31,8 @@ func TestInvalidHttpMethod(t *testing.T) {
 }
 
 func TestEmptyHttpURL(t *testing.T) {
-	msg := f.HTTPMessage{Method: f.GET}
-	reqMsg := f.HTTPRequest{Message: msg}
+	msg := HTTPMessage{Method: GET}
+	reqMsg := HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
@@ -47,9 +47,9 @@ func TestEmptyHttpURL(t *testing.T) {
 }
 
 func TestHttpGETDispatch(t *testing.T) {
-	msg := f.HTTPMessage{Method: f.GET, URL: "https://httpbin.org/anything"}
+	msg := HTTPMessage{Method: GET, URL: "https://httpbin.org/anything"}
 	msg.Add("header1", "value1")
-	reqMsg := f.HTTPRequest{Message: msg}
+	reqMsg := HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
@@ -59,7 +59,7 @@ func TestHttpGETDispatch(t *testing.T) {
 		if r.Err != nil {
 			t.Errorf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
-			res, ok := r.X.(f.HTTPResponse)
+			res, ok := r.X.(HTTPResponse)
 			if !ok {
 				t.Errorf("type assertion err http.Response not found")
 			} else {
@@ -81,9 +81,9 @@ func TestHttpGETDispatch(t *testing.T) {
 }
 
 func TestHttpPOSTDispatch(t *testing.T) {
-	msg := f.HTTPMessage{Method: f.POST, URL: "https://httpbin.org/post"}
+	msg := HTTPMessage{Method: POST, URL: "https://httpbin.org/post"}
 	msg.Add("accept", "application/json")
-	reqMsg := f.HTTPRequest{Message: msg}
+	reqMsg := HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
@@ -93,7 +93,7 @@ func TestHttpPOSTDispatch(t *testing.T) {
 		if r.Err != nil {
 			t.Errorf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
-			res, ok := r.X.(f.HTTPResponse)
+			res, ok := r.X.(HTTPResponse)
 			if !ok {
 				t.Errorf("type assertion err http.Response not found")
 			} else {
@@ -115,8 +115,8 @@ func TestHttpPOSTDispatch(t *testing.T) {
 }
 
 func TestHttpGETDeplyedResponse(t *testing.T) {
-	msg := f.HTTPMessage{Method: f.GET, URL: "http://localhost:8000/healthz"}
-	reqMsg := f.HTTPRequest{Message: msg}
+	msg := HTTPMessage{Method: GET, URL: "http://localhost:8000/healthz"}
+	reqMsg := HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
@@ -132,8 +132,8 @@ func TestHttpGETDeplyedResponse(t *testing.T) {
 }
 
 func TestHttpURLError(t *testing.T) {
-	msg := f.HTTPMessage{Method: f.GET, URL: "http://unknown:8000/healthz"}
-	reqMsg := f.HTTPRequest{Message: msg}
+	msg := HTTPMessage{Method: GET, URL: "http://unknown:8000/healthz"}
+	reqMsg := HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
@@ -148,9 +148,9 @@ func TestHttpURLError(t *testing.T) {
 }
 
 func BenchmarkDispatchWorker(b *testing.B) {
-	msg := f.HTTPMessage{Method: f.GET, URL: "https://httpbin.org/anything"}
+	msg := HTTPMessage{Method: GET, URL: "https://httpbin.org/anything"}
 	msg.Add("header1", "value1")
-	reqMsg := f.HTTPRequest{Message: msg}
+	reqMsg := HTTPRequest{Message: msg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m := f.NewMultiplexer()
@@ -160,7 +160,7 @@ func BenchmarkDispatchWorker(b *testing.B) {
 		if r.Err != nil {
 			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
 		} else {
-			res, ok := r.X.(f.HTTPResponse)
+			res, ok := r.X.(HTTPResponse)
 			if !ok {
 				log.Printf("type assertion err http.Response not found")
 			} else {
