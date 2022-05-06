@@ -84,11 +84,12 @@ func httpDispatch(ctx context.Context, reqMsg f.HTTPRequest, resultStream chan<-
 
 			hr := f.HTTPResponse{
 				Message: f.HTTPMessage{
-					ID:         reqMsg.Message.ID,
-					StatusCode: res.StatusCode,
-					Method:     reqMsg.Message.Method,
-					URL:        reqMsg.Message.URL,
-					Payload:    string(bb),
+					ID:             reqMsg.Message.ID,
+					StatusCode:     res.StatusCode,
+					Method:         reqMsg.Message.Method,
+					URL:            reqMsg.Message.URL,
+					Payload:        string(bb),
+					ActiveDeadLine: reqMsg.Message.ActiveDeadLine,
 				},
 			}
 

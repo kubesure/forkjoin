@@ -45,7 +45,7 @@ func TestChecker(t *testing.T) {
 	resultStream := m.Multiplex(context.Background(), pc)
 	for r := range resultStream {
 		if r.Err != nil {
-			// FIXME: write individual tests
+			// TODO: write individual tests
 			t.Errorf("error not expected id: %v code: %v message: %v\n", r.ID, r.Err.Code, r.Err.Message)
 		} else {
 			pc, ok := r.X.(prospectcompany)
