@@ -42,6 +42,7 @@ func (l *StandardLogger) LogAbortedRequest(requestID, messageID, message string)
 	l.Errorf(abortRequest.message, requestID, messageID, message)
 }
 
+//TODO: have one info or request and one generic
 func (l *StandardLogger) LogRequestInfo(requestID, message string) {
 	l.Infof(infoRequest.message, requestID, message)
 }

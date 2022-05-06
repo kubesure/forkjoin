@@ -15,7 +15,6 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 	log := NewLogger()
 
 	sendResult := func(r Result) {
-		r.ID = fmt.Sprint(i.id)
 		multiplexdResultStream <- r
 	}
 
