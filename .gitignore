@@ -20,3 +20,4 @@ httptlsserver
 httpinsecureserver
 cmd/forkjoin-mac
 data/bulk.json
+certs/http_ca.crt

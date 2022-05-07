@@ -84,7 +84,7 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 				},
 			}
 			req.SetBasicAuth(reqMsg.Message.BasicAtuhCredentials.UserName,
-				reqMsg.Message.BasicAtuhCredentials.UserName)
+				reqMsg.Message.BasicAtuhCredentials.Password)
 		}
 
 		//client := &http.Client{}

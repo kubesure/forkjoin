@@ -30,19 +30,23 @@ func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinServic
 	for i, m := range request.Messages {
 		method, _ := Message_Method_name[int32(m.Method)]
 		auth, _ := Message_Authentication_name[int32(m.Authentication)]
-		bac := BasicAuthCredentials{UserName: m.BasicAuthcredentials.UserName,
-			Password:          m.BasicAuthcredentials.Password,
-			ServerCertificate: m.BasicAuthcredentials.ServerCertificate}
+
 		msg := HTTPMessage{
-			Method:               METHOD(method),
-			URL:                  m.URL,
-			Payload:              m.Payload,
-			Headers:              m.Headers,
-			ActiveDeadLine:       m.ActiveDeadLineSeconds,
-			ID:                   fmt.Sprint(i + 1),
-			Authentication:       AUTHENTICATION(auth),
-			BasicAtuhCredentials: bac,
+			Method:         METHOD(method),
+			URL:            m.URL,
+			Payload:        m.Payload,
+			Headers:        m.Headers,
+			ActiveDeadLine: m.ActiveDeadLineSeconds,
+			ID:             fmt.Sprint(i + 1),
+			Authentication: AUTHENTICATION(auth),
 		}
+
+		if auth == string(BASIC) {
+			msg.BasicAtuhCredentials = BasicAuthCredentials{UserName: m.BasicAuthcredentials.UserName,
+				Password:          m.BasicAuthcredentials.Password,
+				ServerCertificate: m.BasicAuthcredentials.ServerCertificate}
+		}
+
 		reqMsg := HTTPRequest{Message: msg}
 		mtplx.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: msg.ActiveDeadLine})
 	}
