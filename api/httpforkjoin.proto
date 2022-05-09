@@ -17,6 +17,7 @@ message Message {
   enum Authentication {
     NONE = 0;
     BASIC = 1;
+    MUTUAL = 2;
   }
 
   Method method = 3;
@@ -27,11 +28,18 @@ message Message {
   uint32 activeDeadLineSeconds = 8;
   Authentication authentication = 9;
   BasicAuthCredentials basicAuthcredentials = 10;
+  MutualAuthCredentials mutualAuthCredentials = 11;
 
   message BasicAuthCredentials {
     string UserName = 1;
     string Password = 2; 
     string ServerCertificate = 3; 
+  }
+
+  message MutualAuthCredentials {
+    string ClientCertificate = 1;
+    string ClientKey = 2; 
+    string CACertificate = 3; 
   }
 }
 

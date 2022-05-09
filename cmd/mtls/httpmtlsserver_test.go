@@ -141,6 +141,7 @@ func TestInvalidRequestsCfgHTTPForkJoin(t *testing.T) {
 
 }
 
+// TODO: FIX certs passed
 func makeGrpcConn() *grpc.ClientConn {
 	certificate, err := tls.LoadX509KeyPair(os.Getenv("SERVER_CRT"), os.Getenv("SERVER_KEY"))
 	if err != nil {

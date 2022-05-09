@@ -71,23 +71,9 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 
 		var client *http.Client
 
-		if reqMsg.Message.Authentication == NONE {
-			client = &http.Client{}
-		} else if reqMsg.Message.Authentication == BASIC {
-			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM([]byte(reqMsg.Message.BasicAtuhCredentials.ServerCertificate))
-			client = &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						RootCAs: caCertPool,
-					},
-				},
-			}
-			req.SetBasicAuth(reqMsg.Message.BasicAtuhCredentials.UserName,
-				reqMsg.Message.BasicAtuhCredentials.Password)
-		}
+		// Append the certificates from the CA
+		client = newFunction(reqMsg, client, req, log)
 
-		//client := &http.Client{}
 		res, err := client.Do(req)
 
 		if ctx.Err() != nil && res == nil {
@@ -118,6 +104,7 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 		}
 	}()
 
+	// TODO: make this blocking
 	for {
 		select {
 		case r := <-responseStream:
@@ -126,6 +113,49 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 		default:
 		}
 	}
+}
+
+func newFunction(reqMsg HTTPRequest, client *http.Client, req *http.Request, log *f.StandardLogger) *http.Client {
+	if reqMsg.Message.Authentication == NONE {
+		client = &http.Client{}
+	} else if reqMsg.Message.Authentication == BASIC {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(reqMsg.Message.BasicAtuhCredentials.ServerCertificate))
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: caCertPool,
+				},
+			},
+		}
+		req.SetBasicAuth(reqMsg.Message.BasicAtuhCredentials.UserName,
+			reqMsg.Message.BasicAtuhCredentials.Password)
+	} else if reqMsg.Message.Authentication == MUTUAL {
+		certificate, err := tls.LoadX509KeyPair("client_CRT", "client_KEY")
+		if err != nil {
+			log.Fatalf("could not load client key pair: %s", err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		ca, err := ioutil.ReadFile("CA_CRT")
+		if err != nil {
+			log.Fatalf("could not read ca certificate: %s", err)
+		}
+
+		if ok := caCertPool.AppendCertsFromPEM(ca); !ok {
+			log.Fatalf("failed to append ca certs")
+		}
+
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs:      caCertPool,
+					Certificates: []tls.Certificate{certificate},
+				},
+			},
+		}
+	}
+	return client
 }
 
 func makeResponse(reqMsg HTTPRequest, res *http.Response, bb []byte) HTTPResponse {

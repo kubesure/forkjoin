@@ -28,9 +28,10 @@ func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinServic
 	log := fj.NewLogger()
 	mtplx := fj.NewMultiplexer()
 	for i, m := range request.Messages {
-		method, _ := Message_Method_name[int32(m.Method)]
-		auth, _ := Message_Authentication_name[int32(m.Authentication)]
+		method := Message_Method_name[int32(m.Method)]
+		auth := Message_Authentication_name[int32(m.Authentication)]
 
+		// TODO: use makemessage func
 		msg := HTTPMessage{
 			Method:         METHOD(method),
 			URL:            m.URL,
@@ -45,6 +46,12 @@ func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinServic
 			msg.BasicAtuhCredentials = BasicAuthCredentials{UserName: m.BasicAuthcredentials.UserName,
 				Password:          m.BasicAuthcredentials.Password,
 				ServerCertificate: m.BasicAuthcredentials.ServerCertificate}
+		} else if auth == string(MUTUAL) {
+			msg.MutualAuthCredentials = MutualAuthCredentials{
+				ClientCertificate: m.MutualAuthCredentials.ClientCertificate,
+				ClientKey:         m.MutualAuthCredentials.ClientKey,
+				CACertificate:     m.MutualAuthCredentials.CACertificate,
+			}
 		}
 
 		reqMsg := HTTPRequest{Message: msg}
@@ -63,7 +70,7 @@ func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinServic
 				return status.Errorf(codes.Internal, fmt.Sprintf("Error while request id: %s message id: %s writing to stream", result.ID, response.Message.ID), err)
 			}
 		} else {
-			m := makeMessage(response)
+			m := makeErrResMsg(response)
 			r := Response{Id: result.ID, Message: m}
 			err := stream.Send(&r)
 			if err != nil {
@@ -76,8 +83,8 @@ func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinServic
 	return nil
 }
 
-func makeMessage(response HTTPResponse) *Message {
-	method, _ := Message_Method_value[string(response.Message.Method)]
+func makeErrResMsg(response HTTPResponse) *Message {
+	method := Message_Method_value[string(response.Message.Method)]
 	m := &Message{
 		URL:        response.Message.URL,
 		Method:     Message_Method(method),
@@ -94,7 +101,7 @@ func makeGrpcErrRes(reqID string, err fj.FJError, response HTTPResponse) *Respon
 	fjerrors := []*Error{}
 	fjerr := Error{Code: ErrorCode(err.Code), Message: err.Message}
 	fjerrors = append(fjerrors, &fjerr)
-	m := makeMessage(response)
+	m := makeErrResMsg(response)
 	r := Response{Id: reqID, Message: m, Errors: fjerrors}
 	return &r
 }

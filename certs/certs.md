@@ -28,6 +28,7 @@ openssl req \
 <(printf "\n[SAN]\nsubjectAltName=DNS:ecomm.kubesure.io,DNS:www.ecomm.kubesure.io")) \
 -keyout server.key 
 
+//verify
 openssl req -in server.csr -text -noout | grep DNS
 
 openssl x509 -req \
@@ -56,6 +57,7 @@ openssl req \
 <(printf "\n[SAN]\nsubjectAltName=DNS:ecomm.kubesure.io,DNS:www.ecomm.kubesure.io")) \
 -keyout client.key
 
+//verify
 openssl req -in client.csr -text -noout | grep DNS
 
 openssl x509 -req \
