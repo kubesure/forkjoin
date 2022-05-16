@@ -131,13 +131,21 @@ func newFunction(reqMsg HTTPRequest, client *http.Client, req *http.Request, log
 		req.SetBasicAuth(reqMsg.Message.BasicAtuhCredentials.UserName,
 			reqMsg.Message.BasicAtuhCredentials.Password)
 	} else if reqMsg.Message.Authentication == MUTUAL {
-		certificate, err := tls.LoadX509KeyPair("client_CRT", "client_KEY")
+		certificate, err := tls.LoadX509KeyPair(
+			reqMsg.Message.MutualAuthCredentials.ClientCertificate,
+			reqMsg.Message.MutualAuthCredentials.ClientKey,
+			//"..//certs//client.crt",
+			//"..//certs//client.key",
+		)
 		if err != nil {
 			log.Fatalf("could not load client key pair: %s", err)
 		}
 
 		caCertPool := x509.NewCertPool()
-		ca, err := ioutil.ReadFile("CA_CRT")
+		ca, err := ioutil.ReadFile(
+			//reqMsg.Message.MutualAuthCredentials.CACertificate
+			"..//certs//ca.key",
+		)
 		if err != nil {
 			log.Fatalf("could not read ca certificate: %s", err)
 		}

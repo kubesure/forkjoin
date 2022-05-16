@@ -19,7 +19,7 @@ func main() {
 	srv := http.Server{
 		Addr:    ":8000",
 		Handler: mux,
-		TLSConfig: getTLSConfig("ecomm.kubesure.io", "/home/prashant/src/forkjoin/certs/ca.crt",
+		TLSConfig: getTLSConfig("ecomm.kubesure.io", "..//..//certs//ca.crt",
 			tls.ClientAuthType(tls.VerifyClientCertIfGiven)),
 	}
 	ctx := context.Background()
@@ -34,7 +34,7 @@ func main() {
 		}
 	}()
 	//os.Getwd()
-	if err := srv.ListenAndServeTLS("/home/prashant/src/forkjoin/certs/server.crt", "/home/prashant/src/forkjoin/certs/server.key"); err != http.ErrServerClosed {
+	if err := srv.ListenAndServeTLS("..//..//certs//server.crt", "..//..//certs//server.key"); err != http.ErrServerClosed {
 		log.Fatalf("ListenAndServe(): %s", err)
 	}
 }
@@ -56,13 +56,13 @@ func getTLSConfig(host, caCertFile string, certOpt tls.ClientAuthType) *tls.Conf
 		ServerName: host,
 		ClientAuth: certOpt,
 		ClientCAs:  caCertPool,
-		MinVersion: tls.VersionTLS12, // TLS versions below 1.2 are considered insecure - see https://www.rfc-editor.org/rfc/rfc7525.txt for details
+		MinVersion: tls.VersionTLS12,
 	}
 }
 
 func hello(w http.ResponseWriter, r *http.Request) {
 	//to simulate a deplyed response
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	w.WriteHeader(200)
 	data := (time.Now()).String()
 	log.Println("health ok")

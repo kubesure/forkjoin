@@ -69,6 +69,51 @@ func TestHTTPForkJoin(t *testing.T) {
 	}
 }
 
+func TestMutulAuth(t *testing.T) {
+	conn := makeGrpcConn()
+	defer conn.Close()
+	c := h.NewHTTPForkJoinServiceClient(conn)
+
+	req := h.Request{Id: "BIN1", Messages: makeMutualAuthRequestsCfg()}
+	stream, err := c.FanoutFanin(context.Background(), &req)
+	if err != nil {
+		t.Errorf("GRPC error call should have not failed with %v", err)
+	}
+
+	res := []*h.Response{}
+
+	for {
+		response, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("%v.FanoutFanin = _, %v", c, err)
+		}
+
+		if response.Message.StatusCode != 200 {
+			t.Errorf("error code is not 200 but %v", response.Message.StatusCode)
+		}
+
+		if response.Message.URL != "https://localhost:8000/mutual" {
+			t.Errorf("URL not found in response")
+		}
+		if response.Message.Method == h.Message_NIL {
+			t.Errorf("response method is empty")
+		}
+		if len(response.Message.Payload) == 0 {
+			t.Errorf("response payload is empty")
+		}
+		if len(response.Message.Headers) == 0 {
+			t.Errorf("response headers is empty")
+		}
+		res = append(res, response)
+	}
+	if len(res) != 1 {
+		t.Error("there should be a 1 responses")
+	}
+}
+
 func TestInvalidHTTPURLForkJoin(t *testing.T) {
 	conn := makeGrpcConn()
 	defer conn.Close()
@@ -228,5 +273,27 @@ func makeInValidRequestsCfg() []*h.Message {
 	msgs := []*h.Message{}
 	msgs = append(msgs, invalidURLMsg)
 	msgs = append(msgs, delayedMesg)
+	return msgs
+}
+
+func makeMutualAuthRequestsCfg() []*h.Message {
+	msg := &h.Message{
+		Method:                h.Message_GET,
+		URL:                   "http://localhost:8000/mutual",
+		Authentication:        h.Message_MUTUAL,
+		ActiveDeadLineSeconds: 10, Id: "001"}
+
+	//clientcrt, _ := ioutil.ReadFile("..//certs//client.crt")
+	//clientkey, _ := ioutil.ReadFile("..//certs//client.key")
+	//ca, _ := ioutil.ReadFile("..//certs//ca.crt")
+
+	mcreds := h.Message_MutualAuthCredentials{
+		ClientCertificate: string("..//certs//client.crt"),
+		ClientKey:         string("..//certs//client.key"),
+		CACertificate:     string("..//certs//ca.crt")}
+
+	msg.MutualAuthCredentials = &mcreds
+	msgs := []*h.Message{}
+	msgs = append(msgs, msg)
 	return msgs
 }
