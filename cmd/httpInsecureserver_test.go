@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"testing"
@@ -91,21 +92,12 @@ func TestMutulAuth(t *testing.T) {
 			t.Errorf("%v.FanoutFanin = _, %v", c, err)
 		}
 
-		if response.Message.StatusCode != 200 {
+		if response.Message.StatusCode != 502 {
 			t.Errorf("error code is not 200 but %v", response.Message.StatusCode)
 		}
 
 		if response.Message.URL != "https://localhost:8000/mutual" {
 			t.Errorf("URL not found in response")
-		}
-		if response.Message.Method == h.Message_NIL {
-			t.Errorf("response method is empty")
-		}
-		if len(response.Message.Payload) == 0 {
-			t.Errorf("response payload is empty")
-		}
-		if len(response.Message.Headers) == 0 {
-			t.Errorf("response headers is empty")
 		}
 		res = append(res, response)
 	}
@@ -279,18 +271,18 @@ func makeInValidRequestsCfg() []*h.Message {
 func makeMutualAuthRequestsCfg() []*h.Message {
 	msg := &h.Message{
 		Method:                h.Message_GET,
-		URL:                   "http://localhost:8000/mutual",
+		URL:                   "https://localhost:8000/mutual",
 		Authentication:        h.Message_MUTUAL,
 		ActiveDeadLineSeconds: 10, Id: "001"}
 
-	//clientcrt, _ := ioutil.ReadFile("..//certs//client.crt")
-	//clientkey, _ := ioutil.ReadFile("..//certs//client.key")
-	//ca, _ := ioutil.ReadFile("..//certs//ca.crt")
+	clientcrt, _ := ioutil.ReadFile("..//certs//client.crt")
+	clientkey, _ := ioutil.ReadFile("..//certs//client.key")
+	ca, _ := ioutil.ReadFile("..//certs//ca.crt")
 
 	mcreds := h.Message_MutualAuthCredentials{
-		ClientCertificate: string("..//certs//client.crt"),
-		ClientKey:         string("..//certs//client.key"),
-		CACertificate:     string("..//certs//ca.crt")}
+		ClientCertificate: string(clientcrt),
+		ClientKey:         string(clientkey),
+		CACertificate:     string(ca)}
 
 	msg.MutualAuthCredentials = &mcreds
 	msgs := []*h.Message{}

@@ -131,24 +131,15 @@ func newFunction(reqMsg HTTPRequest, client *http.Client, req *http.Request, log
 		req.SetBasicAuth(reqMsg.Message.BasicAtuhCredentials.UserName,
 			reqMsg.Message.BasicAtuhCredentials.Password)
 	} else if reqMsg.Message.Authentication == MUTUAL {
-		certificate, err := tls.LoadX509KeyPair(
-			reqMsg.Message.MutualAuthCredentials.ClientCertificate,
-			reqMsg.Message.MutualAuthCredentials.ClientKey,
-			//"..//certs//client.crt",
-			//"..//certs//client.key",
-		)
+		certificate, err := tls.X509KeyPair([]byte(reqMsg.Message.MutualAuthCredentials.ClientCertificate),
+			[]byte(reqMsg.Message.MutualAuthCredentials.ClientKey))
 		if err != nil {
 			log.Fatalf("could not load client key pair: %s", err)
 		}
 
+		ca := []byte(reqMsg.Message.MutualAuthCredentials.CACertificate)
+
 		caCertPool := x509.NewCertPool()
-		ca, err := ioutil.ReadFile(
-			//reqMsg.Message.MutualAuthCredentials.CACertificate
-			"..//certs//ca.key",
-		)
-		if err != nil {
-			log.Fatalf("could not read ca certificate: %s", err)
-		}
 
 		if ok := caCertPool.AppendCertsFromPEM(ca); !ok {
 			log.Fatalf("failed to append ca certs")
