@@ -49,6 +49,7 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 				Err: &f.FJError{Code: f.RequestError, Message: fmt.Sprintf("Method %v is invalid", hdw.Request.Message.Method)}}
 			return
 		}
+
 		httpDispatch(ctx, hdw.Request, resultStream)
 	}()
 	return resultStream
@@ -71,15 +72,18 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 
 		var client *http.Client
 
-		// Append the certificates from the CA
-		client = newFunction(reqMsg, client, req, log)
+		client = newClient(reqMsg, client, req, log)
 
 		res, err := client.Do(req)
 
 		if ctx.Err() != nil && res == nil {
-			log.LogAbortedRequest(RequestID(ctx), reqMsg.Message.ID, "Aborted")
+			log.LogAbortedRequest(RequestID(ctx), reqMsg.Message.ID,
+				fmt.Sprintf("Aborted. Too longer than active deadline %v", reqMsg.Message.ActiveDeadLine))
 			responseStream <- f.Result{ID: RequestID(ctx), X: makeErrorResponse(reqMsg, http.StatusRequestTimeout),
-				Err: &f.FJError{Code: f.RequestAborted, Message: fmt.Sprintf("Request aborted took longer than expected %v", err)}}
+				Err: &f.FJError{Code: f.RequestAborted,
+					Message: fmt.Sprintf("Request aborted took longer than %v seconds %v",
+						reqMsg.Message.ActiveDeadLine, err)},
+			}
 		} else if err != nil {
 			log.LogRequestDispatchError(RequestID(ctx), reqMsg.Message.ID, err.Error())
 			responseStream <- f.Result{ID: RequestID(ctx), X: makeErrorResponse(reqMsg, http.StatusBadGateway),
@@ -104,18 +108,11 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 		}
 	}()
 
-	// TODO: make this blocking
-	for {
-		select {
-		case r := <-responseStream:
-			resultStream <- r
-			return
-		default:
-		}
-	}
+	r := <-responseStream
+	resultStream <- r
 }
 
-func newFunction(reqMsg HTTPRequest, client *http.Client, req *http.Request, log *f.StandardLogger) *http.Client {
+func newClient(reqMsg HTTPRequest, client *http.Client, req *http.Request, log *f.StandardLogger) *http.Client {
 	if reqMsg.Message.Authentication == NONE {
 		client = &http.Client{}
 	} else if reqMsg.Message.Authentication == BASIC {
@@ -178,7 +175,7 @@ func makeErrorResponse(reqMsg HTTPRequest, resStatus int) HTTPResponse {
 			StatusCode:     resStatus,
 			Method:         reqMsg.Message.Method,
 			URL:            reqMsg.Message.URL,
-			Payload:        fmt.Sprintf(""),
+			Payload:        "",
 			ActiveDeadLine: reqMsg.Message.ActiveDeadLine,
 		},
 	}
