@@ -22,7 +22,7 @@ func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duratio
 
 	go func() {
 		defer close(pulseStream)
-		pulse := time.Tick(pulseInterval)
+		pulse := time.NewTicker(pulseInterval)
 
 		sendPulse := func() {
 			select {
@@ -35,7 +35,7 @@ func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duratio
 			select {
 			case <-quitPulstStream:
 				return
-			case <-pulse:
+			case <-pulse.C:
 				sendPulse()
 			}
 		}
