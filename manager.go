@@ -25,18 +25,17 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 	//worker moniter loop
 	for {
 		select {
-		case <-pulseStream:
+		case hb := <-pulseStream:
 			currPulseT := time.Now()
 			diff := int32(currPulseT.Sub(lastPulseT).Seconds())
 			lastPulseT = currPulseT
 			if diff > 2 {
-				log.LogInfo(fmt.Sprint(i.id), "Heartbeat inconsistent spawning new worker goroutine")
+				log.LogInfo(fmt.Sprint(hb.id), "Heartbeat inconsistent spawning new worker goroutine")
 				resultStream, pulseStream = dispatch(ctx, i, i.worker, pulseInterval)
 			}
-		case r, _ := <-resultStream:
+		case r := <-resultStream:
 			sendResult(r)
 			return
-		default:
 		}
 	}
 }

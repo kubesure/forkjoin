@@ -16,15 +16,8 @@ func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duratio
 		defer close(quitPulstStream)
 		defer close(resultStream)
 		result := w.Work(ctx, i.x)
-		for {
-			select {
-			case r := <-result:
-				resultStream <- r
-				quitPulstStream <- struct{}{}
-				return
-			default:
-			}
-		}
+		resultStream <- <-result
+		quitPulstStream <- struct{}{}
 	}()
 
 	go func() {
@@ -33,7 +26,7 @@ func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duratio
 
 		sendPulse := func() {
 			select {
-			case pulseStream <- heartbeat{}:
+			case pulseStream <- heartbeat{id: i.id}:
 			default:
 			}
 		}
@@ -44,7 +37,6 @@ func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duratio
 				return
 			case <-pulse:
 				sendPulse()
-			default:
 			}
 		}
 	}()
