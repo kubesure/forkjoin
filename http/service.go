@@ -21,7 +21,6 @@ type DispatchServer struct {
 	UnimplementedHTTPForkJoinServiceServer
 }
 
-// TODO: Validate Input
 //FanoutFanin Fans out each http message to http dispatch works using the fork join interface
 func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinService_FanoutFaninServer) error {
 	ctx := context.WithValue(context.Background(), CtxRequestID, request.Id)

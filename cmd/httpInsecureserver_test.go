@@ -106,6 +106,39 @@ func TestMutulAuth(t *testing.T) {
 	}
 }
 
+func TestInvalidMutulAuth(t *testing.T) {
+	conn := makeGrpcConn()
+	defer conn.Close()
+	c := h.NewHTTPForkJoinServiceClient(conn)
+
+	req := h.Request{Id: "BIN1", Messages: makeAuthErrMutualReq()}
+	stream, err := c.FanoutFanin(context.Background(), &req)
+	if err != nil {
+		t.Errorf("GRPC error call should have not failed with %v", err)
+	}
+
+	res := []*h.Response{}
+
+	for {
+		response, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("%v.FanoutFanin = _, %v", c, err)
+		}
+		res = append(res, response)
+	}
+	if len(res) != 1 {
+		t.Error("there should be a 1 responses")
+	}
+
+	if res[0].Errors[0].Code != h.ErrorCode_AuthenticationError {
+		t.Errorf("there should be error code: %v", h.ErrorCode_AuthenticationError)
+	}
+
+}
+
 func TestInvalidHTTPURLForkJoin(t *testing.T) {
 	conn := makeGrpcConn()
 	defer conn.Close()
@@ -253,7 +286,7 @@ func makeInValidURLRequests() []*h.Message {
 }
 
 func makeSlowResponseRequests() []*h.Message {
-	delayedMesg := &h.Message{Method: h.Message_POST, URL: "http://localhost:8000/healthz"}
+	delayedMesg := &h.Message{Method: h.Message_POST, URL: "http://localhost:8000/healthz", ActiveDeadLineSeconds: 10}
 	msgs := []*h.Message{}
 	msgs = append(msgs, delayedMesg)
 	return msgs
@@ -269,6 +302,28 @@ func makeInValidRequestsCfg() []*h.Message {
 }
 
 func makeMutualAuthRequestsCfg() []*h.Message {
+	msg := &h.Message{
+		Method:                h.Message_GET,
+		URL:                   "https://localhost:8000/mutual",
+		Authentication:        h.Message_MUTUAL,
+		ActiveDeadLineSeconds: 10, Id: "001"}
+
+	clientcrt, _ := ioutil.ReadFile("..//certs//client.crt")
+	clientkey, _ := ioutil.ReadFile("..//certs//client.key")
+	ca, _ := ioutil.ReadFile("..//certs//ca.crt")
+
+	mcreds := h.Message_MutualAuthCredentials{
+		ClientCertificate: string(clientcrt),
+		ClientKey:         string(clientkey),
+		CACertificate:     string(ca)}
+
+	msg.MutualAuthCredentials = &mcreds
+	msgs := []*h.Message{}
+	msgs = append(msgs, msg)
+	return msgs
+}
+
+func makeAuthErrMutualReq() []*h.Message {
 	msg := &h.Message{
 		Method:                h.Message_GET,
 		URL:                   "https://localhost:8000/mutual",

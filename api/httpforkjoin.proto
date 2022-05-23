@@ -62,6 +62,7 @@ enum ErrorCode {
 	  ConnectionError = 3;
 	  ConcurrencyContextError = 4;
     RequestAborted = 5;
+    AuthenticationError  = 6;
 }
 
 message Error {

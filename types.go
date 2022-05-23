@@ -36,8 +36,10 @@ const (
 	ConnectionError
 	ConcurrencyContextError
 	RequestAborted
+	AuthenticationError
 	RequestInfo
 	Info
+	HeartBeatInfo
 )
 
 //composite object to hold data for multiplexed go routines

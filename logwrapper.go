@@ -21,9 +21,11 @@ var (
 	requestDispatchError = LogEvent{RequestError, "Request Id: %s Message Id: %s Request Dispatch Error: %v"}
 	abortRequest         = LogEvent{RequestAborted, "Request Id: %s Message Id: %s Abort Request: %v"}
 	responseError        = LogEvent{ResponseError, "Request Id: %s Message Id: %s Response error: %v"}
-	connectionError      = LogEvent{ConnectionError, "Request Id: %s Message Id: %s Connection error: %v"}
+	connectionError      = LogEvent{ConnectionError, "Request Id: %s Message Id: %s Connection Error: %v"}
 	infoRequest          = LogEvent{RequestInfo, "Request Id: %s Message Id: %s: %s"}
 	info                 = LogEvent{Info, "Request Id: %s %s "}
+	heartBeatMsg         = LogEvent{HeartBeatInfo, "Request Id: %s Message Id: %s Heat beat: %v"}
+	authenticationError  = LogEvent{AuthenticationError, "Request Id: %s Message Id: %s Authentication Error: %v"}
 )
 
 func (l *StandardLogger) LogInvalidRequest(requestID, messageID, message string) {
@@ -40,6 +42,14 @@ func (l *StandardLogger) LogRequestDispatchError(requestID, messageID, message s
 
 func (l *StandardLogger) LogAbortedRequest(requestID, messageID, message string) {
 	l.Errorf(abortRequest.message, requestID, messageID, message)
+}
+
+func (l *StandardLogger) LogHeartBeatMsg(requestID, messageID, message string) {
+	l.Errorf(heartBeatMsg.message, requestID, messageID, message)
+}
+
+func (l *StandardLogger) LogAuthenticationError(requestID, messageID, message string) {
+	l.Errorf(authenticationError.message, requestID, messageID, message)
 }
 
 //TODO: have one info or request and one generic

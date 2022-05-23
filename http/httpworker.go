@@ -70,41 +70,49 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 			req.Header.Add(k, v)
 		}
 
-		var client *http.Client
+		client, cerr := newClient(reqMsg, req)
 
-		client = newClient(reqMsg, client, req, log)
-
-		res, err := client.Do(req)
-
-		if ctx.Err() != nil && res == nil {
-			log.LogAbortedRequest(RequestID(ctx), reqMsg.Message.ID,
-				fmt.Sprintf("Aborted. Too longer than active deadline %v", reqMsg.Message.ActiveDeadLine))
-			responseStream <- f.Result{ID: RequestID(ctx), X: makeErrorResponse(reqMsg, http.StatusRequestTimeout),
-				Err: &f.FJError{Code: f.RequestAborted,
-					Message: fmt.Sprintf("Request aborted took longer than %v seconds %v",
-						reqMsg.Message.ActiveDeadLine, err)},
+		if cerr != nil {
+			log.LogAuthenticationError(RequestID(ctx), reqMsg.Message.ID, cerr.Message)
+			responseStream <- f.Result{ID: RequestID(ctx),
+				X:   makeErrorResponse(reqMsg, http.StatusRequestTimeout),
+				Err: &f.FJError{Code: f.AuthenticationError, Message: cerr.Message},
 			}
-		} else if err != nil {
-			log.LogRequestDispatchError(RequestID(ctx), reqMsg.Message.ID, err.Error())
-			responseStream <- f.Result{ID: RequestID(ctx), X: makeErrorResponse(reqMsg, http.StatusBadGateway),
-				Err: &f.FJError{Code: f.ConnectionError, Message: fmt.Sprintf("Error in dispatching request: %v", err)}}
 		} else {
-			bb, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				log.LogResponseError(RequestID(ctx), reqMsg.Message.ID, err.Error())
-				responseStream <- f.Result{ID: RequestID(ctx), X: makeResponse(reqMsg, res, nil),
-					Err: &f.FJError{Code: f.ResponseError, Message: fmt.Sprintf("Error reading http response: %v", err)}}
-			}
-
-			hr := makeResponse(reqMsg, res, bb)
-
-			for k, values := range res.Header {
-				for _, value := range values {
-					hr.Message.Add(k, value)
+			res, err := client.Do(req)
+			if ctx.Err() != nil && res == nil {
+				log.LogAbortedRequest(RequestID(ctx), reqMsg.Message.ID,
+					fmt.Sprintf("Aborted. Too longer than active deadline %v", reqMsg.Message.ActiveDeadLine))
+				responseStream <- f.Result{
+					ID: RequestID(ctx), X: makeErrorResponse(reqMsg, http.StatusRequestTimeout),
+					Err: &f.FJError{Code: f.RequestAborted,
+						Message: fmt.Sprintf("Request aborted took longer than %v seconds %v",
+							reqMsg.Message.ActiveDeadLine, err)},
 				}
+			} else if err != nil {
+				log.LogRequestDispatchError(RequestID(ctx), reqMsg.Message.ID, err.Error())
+				responseStream <- f.Result{ID: RequestID(ctx),
+					X:   makeErrorResponse(reqMsg, http.StatusBadGateway),
+					Err: &f.FJError{Code: f.ConnectionError, Message: fmt.Sprintf("Error in dispatching request: %v", err)}}
+			} else {
+				bb, err := ioutil.ReadAll(res.Body)
+				if err != nil {
+					log.LogResponseError(RequestID(ctx), reqMsg.Message.ID, err.Error())
+					responseStream <- f.Result{ID: RequestID(ctx),
+						X:   makeResponse(reqMsg, res, nil),
+						Err: &f.FJError{Code: f.ResponseError, Message: fmt.Sprintf("Error reading http response: %v", err)}}
+				}
+
+				hr := makeResponse(reqMsg, res, bb)
+
+				for k, values := range res.Header {
+					for _, value := range values {
+						hr.Message.Add(k, value)
+					}
+				}
+				defer res.Body.Close()
+				responseStream <- f.Result{ID: RequestID(ctx), X: hr}
 			}
-			defer res.Body.Close()
-			responseStream <- f.Result{ID: RequestID(ctx), X: hr}
 		}
 	}()
 
@@ -112,26 +120,35 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 	resultStream <- r
 }
 
-func newClient(reqMsg HTTPRequest, client *http.Client, req *http.Request, log *f.StandardLogger) *http.Client {
+func newClient(reqMsg HTTPRequest, req *http.Request) (*http.Client, *f.FJError) {
+	var client *http.Client
 	if reqMsg.Message.Authentication == NONE {
 		client = &http.Client{}
 	} else if reqMsg.Message.Authentication == BASIC {
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(reqMsg.Message.BasicAtuhCredentials.ServerCertificate))
-		client = &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					RootCAs: caCertPool,
+		ok := caCertPool.AppendCertsFromPEM([]byte(reqMsg.Message.BasicAtuhCredentials.ServerCertificate))
+		if !ok {
+			return nil, &f.FJError{Code: f.AuthenticationError,
+				Message: "Failed to append server certificate"}
+		} else {
+			client = &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						RootCAs: caCertPool,
+					},
 				},
-			},
+			}
+			req.SetBasicAuth(reqMsg.Message.BasicAtuhCredentials.UserName,
+				reqMsg.Message.BasicAtuhCredentials.Password)
+			return client, nil
 		}
-		req.SetBasicAuth(reqMsg.Message.BasicAtuhCredentials.UserName,
-			reqMsg.Message.BasicAtuhCredentials.Password)
+
 	} else if reqMsg.Message.Authentication == MUTUAL {
 		certificate, err := tls.X509KeyPair([]byte(reqMsg.Message.MutualAuthCredentials.ClientCertificate),
 			[]byte(reqMsg.Message.MutualAuthCredentials.ClientKey))
 		if err != nil {
-			log.Fatalf("could not load client key pair: %s", err)
+			return nil, &f.FJError{Code: f.AuthenticationError,
+				Message: "Error parsing client certificate"}
 		}
 
 		ca := []byte(reqMsg.Message.MutualAuthCredentials.CACertificate)
@@ -139,7 +156,8 @@ func newClient(reqMsg HTTPRequest, client *http.Client, req *http.Request, log *
 		caCertPool := x509.NewCertPool()
 
 		if ok := caCertPool.AppendCertsFromPEM(ca); !ok {
-			log.Fatalf("failed to append ca certs")
+			return nil, &f.FJError{Code: f.AuthenticationError,
+				Message: "Failed to append CA certificate"}
 		}
 
 		client = &http.Client{
@@ -151,7 +169,7 @@ func newClient(reqMsg HTTPRequest, client *http.Client, req *http.Request, log *
 			},
 		}
 	}
-	return client
+	return client, nil
 }
 
 func makeResponse(reqMsg HTTPRequest, res *http.Response, bb []byte) HTTPResponse {
