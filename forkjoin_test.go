@@ -25,9 +25,6 @@ type shareholder struct {
 	cif           string
 }
 
-//Worker checks prospectcompany against police records
-type policechecker struct{ activeDeadLine uint32 }
-
 //Worker checks prospectcompany against central bank records
 type centralbankchecker struct{ activeDeadLine uint32 }
 
@@ -41,7 +38,7 @@ func TestChecker(t *testing.T) {
 	var pc prospectcompany = prospectcompany{}
 	m := NewMultiplexer()
 	m.AddWorker(&centralbankchecker{activeDeadLine: 10})
-	m.AddWorker(&policechecker{activeDeadLine: 10})
+
 	resultStream := m.Multiplex(context.Background(), pc)
 	for r := range resultStream {
 		if r.Err != nil {
@@ -65,8 +62,9 @@ func (c *centralbankchecker) ActiveDeadLineSeconds() uint32 {
 }
 
 //example worker
-func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Result {
+func (c *centralbankchecker) Work(ctx context.Context, x interface{}) (<-chan Result, <-chan Heartbeat) {
 	resultStream := make(chan Result)
+	hb := make(chan Heartbeat)
 
 	go func() {
 		defer close(resultStream)
@@ -75,7 +73,7 @@ func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Res
 			resultStream <- Result{Err: &FJError{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 			return
 		}
-		n := randInt(15)
+		n := randInt(5)
 		//n := 15
 		log.Printf("Sleeping %d seconds...\n", n)
 		for {
@@ -90,39 +88,10 @@ func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Res
 			}
 		}
 	}()
-	return resultStream
-}
 
-func (p *policechecker) ActiveDeadLineSeconds() uint32 {
-	return p.activeDeadLine
-}
+	go SendPulse(ctx, hb, 1)
 
-func (p *policechecker) Work(ctx context.Context, x interface{}) <-chan Result {
-	resultStream := make(chan Result)
-
-	go func() {
-		defer close(resultStream)
-		pc, ok := x.(prospectcompany)
-		if !ok {
-			resultStream <- Result{Err: &FJError{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
-			return
-		}
-		n := randInt(15)
-		//n := 15
-		log.Printf("Sleeping %d seconds...\n", n)
-		for {
-			select {
-			case <-ctx.Done():
-				resultStream <- Result{Err: &FJError{Code: RequestAborted, Message: "Aborted call active deadline second exceeded"}}
-				return
-			case <-time.After((time.Duration(n) * time.Second)):
-				pc.isMatch = true
-				resultStream <- Result{X: pc}
-				return
-			}
-		}
-	}()
-	return resultStream
+	return resultStream, hb
 }
 
 func randInt(inrange int) int {

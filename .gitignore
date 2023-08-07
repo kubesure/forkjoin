@@ -22,3 +22,6 @@ cmd/forkjoin-mac
 data/bulk.json
 certs/http_ca.crt
 .DS_Store
+.vscode/configurationCache.log
+.vscode/dryrun.log
+.vscode/targets.log
