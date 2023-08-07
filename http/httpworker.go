@@ -12,15 +12,16 @@ import (
 	f "github.com/kubesure/forkjoin"
 )
 
-//DispatchWorker dispatches to the configured URL
+// DispatchWorker dispatches to the configured URL
 type DispatchWorker struct {
 	Request               HTTPRequest
 	activeDeadLineSeconds uint32
 }
 
-//Work dispatches http request and stream a response back
-func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Result {
+// Work dispatches http request and stream a response back
+func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) (<-chan f.Result, <-chan f.Heartbeat) {
 	resultStream := make(chan f.Result)
+	hb := make(chan f.Heartbeat)
 	log := f.NewLogger()
 
 	go func() {
@@ -52,7 +53,11 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 
 		httpDispatch(ctx, hdw.Request, resultStream)
 	}()
-	return resultStream
+
+	//TODO how to make worker whom this lib has no control implement send pulse?
+	go f.SendPulse(ctx, hb, 1)
+
+	return resultStream, hb
 }
 
 func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f.Result) {
@@ -64,6 +69,7 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 		req, _ := http.NewRequestWithContext(
 			ctx, string(reqMsg.Message.Method),
 			reqMsg.Message.URL,
+
 			strings.NewReader(reqMsg.Message.Payload))
 
 		for k, v := range reqMsg.Message.Headers {

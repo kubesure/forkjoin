@@ -51,7 +51,7 @@ func TestHTTPForkJoin(t *testing.T) {
 			t.Errorf("error code is not 200 but %v", response.Message.StatusCode)
 		}
 
-		if response.Message.URL != "https://httpbin.org/anything" {
+		if response.Message.URL != "http://localhost/anything" {
 			t.Errorf("URL not found in response")
 		}
 		if response.Message.Method == h.Message_NIL {
@@ -262,17 +262,20 @@ func makeValidRequests() []*h.Message {
 	headers := make(map[string]string)
 	headers["header1"] = "value1"
 
-	m1 := &h.Message{Method: h.Message_GET, URL: "https://httpbin.org/anything"}
+	m1 := &h.Message{Method: h.Message_GET, URL: "http://localhost/anything"}
 	m1.Headers = headers
 	m1.Payload = "{body:'body'}"
+	//m1.ActiveDeadLineSeconds = 10
 
-	m2 := &h.Message{Method: h.Message_POST, URL: "https://httpbin.org/anything"}
+	m2 := &h.Message{Method: h.Message_POST, URL: "http://localhost/anything"}
 	m2.Headers = headers
 	m2.Payload = "{body:'body'}"
+	//ßm2.ActiveDeadLineSeconds = 10
 
 	msgs := []*h.Message{}
 	msgs = append(msgs, m1)
 	msgs = append(msgs, m2)
+
 	return msgs
 }
 

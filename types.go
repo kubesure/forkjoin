@@ -50,7 +50,7 @@ type input struct {
 	worker Worker
 }
 
-type heartbeat struct {
+type Heartbeat struct {
 	id int
 }
 
@@ -61,7 +61,7 @@ type Multiplexer struct {
 
 //Worker will be implement the work to be done and exit on the done channel
 type Worker interface {
-	Work(ctx context.Context, x interface{}) <-chan Result
+	Work(ctx context.Context, x interface{}) (<-chan Result, <-chan Heartbeat)
 	ActiveDeadLineSeconds() uint32
 }
 
