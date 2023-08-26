@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -101,7 +101,7 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 					X:   makeErrorResponse(reqMsg, http.StatusBadGateway),
 					Err: &f.FJError{Code: f.ConnectionError, Message: fmt.Sprintf("Error in dispatching request: %v", err)}}
 			} else {
-				bb, err := ioutil.ReadAll(res.Body)
+				bb, err := io.ReadAll(res.Body)
 				if err != nil {
 					log.LogResponseError(RequestID(ctx), reqMsg.Message.ID, err.Error())
 					responseStream <- f.Result{ID: RequestID(ctx),
