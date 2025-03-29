@@ -80,35 +80,38 @@ func manage(ctx context.Context, i input, multiplexdResultStream chan<- Result) 
 // implements the template worker algo for all workers and dispatches work to worker
 func dispatch(ctx context.Context, i input, w Worker, pulseInterval time.Duration) (<-chan Result, <-chan Heartbeat) {
 
-	pulseStream := make(<-chan Heartbeat)
+	pulseStream := make(chan Heartbeat)
 	result := make(<-chan Result)
 	resultStream := make(chan Result)
-	//quitPulseStream := make(chan interface{})
+	quitPulseStream := make(chan interface{})
 
 	go func() {
-		//defer close(quitPulseStream)
+		defer close(quitPulseStream)
 		defer close(resultStream)
-		result, pulseStream = w.Work(ctx, i.x)
+		result = w.Work(ctx, i.x)
 		resultStream <- <-result
-		//quitPulseStream <- struct{}{}
+		quitPulseStream <- struct{}{}
+	}()
+
+	go func() {
+		SendPulse(ctx, pulseStream, pulseInterval)
 	}()
 
 	return resultStream, pulseStream
 }
 
-// TODO how to make worker whom this lib has no control implement send pulse?
-// SendPulse to be called by worker to send heart beat back to manager
 func SendPulse(ctx context.Context, pulseStream chan Heartbeat, pulseInterval time.Duration) {
 	defer close(pulseStream)
 	pulse := time.NewTicker(pulseInterval)
-
+	log := NewLogger()
 	sendPulse := func() {
 		select {
 		case pulseStream <- Heartbeat{}:
+			log.LogInfo(fmt.Sprint(pulseStream), "Sending pulse")
 		default:
 		}
 	}
-	//send pulse at a interval or 1 second
+	//send pulse at a pulseInterval
 	for {
 		select {
 		case <-ctx.Done():

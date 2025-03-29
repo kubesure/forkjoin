@@ -19,9 +19,9 @@ type DispatchWorker struct {
 }
 
 // Work dispatches http request and stream a response back
-func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) (<-chan f.Result, <-chan f.Heartbeat) {
+func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Result {
 	resultStream := make(chan f.Result)
-	hb := make(chan f.Heartbeat)
+
 	log := f.NewLogger()
 
 	go func() {
@@ -54,10 +54,7 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) (<-chan f.Re
 		httpDispatch(ctx, hdw.Request, resultStream)
 	}()
 
-	//TODO how to make worker whom this lib has no control implement send pulse?
-	go f.SendPulse(ctx, hb, 1)
-
-	return resultStream, hb
+	return resultStream
 }
 
 func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f.Result) {

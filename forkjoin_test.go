@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-//prospect company to be checked by workers
+// prospect company to be checked by workers
 type prospectcompany struct {
 	id                 int
 	companyName        string
@@ -25,7 +25,7 @@ type shareholder struct {
 	cif           string
 }
 
-//Worker checks prospectcompany against central bank records
+// Worker checks prospectcompany against central bank records
 type centralbankchecker struct{ activeDeadLine uint32 }
 
 func init() {
@@ -61,10 +61,9 @@ func (c *centralbankchecker) ActiveDeadLineSeconds() uint32 {
 	return c.activeDeadLine
 }
 
-//example worker
-func (c *centralbankchecker) Work(ctx context.Context, x interface{}) (<-chan Result, <-chan Heartbeat) {
+// example worker
+func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Result {
 	resultStream := make(chan Result)
-	hb := make(chan Heartbeat)
 
 	go func() {
 		defer close(resultStream)
@@ -73,8 +72,7 @@ func (c *centralbankchecker) Work(ctx context.Context, x interface{}) (<-chan Re
 			resultStream <- Result{Err: &FJError{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 			return
 		}
-		n := randInt(5)
-		//n := 15
+		n := 5
 		log.Printf("Sleeping %d seconds...\n", n)
 		for {
 			select {
@@ -89,9 +87,7 @@ func (c *centralbankchecker) Work(ctx context.Context, x interface{}) (<-chan Re
 		}
 	}()
 
-	go SendPulse(ctx, hb, 1)
-
-	return resultStream, hb
+	return resultStream
 }
 
 func randInt(inrange int) int {
