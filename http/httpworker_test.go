@@ -17,8 +17,8 @@ func init() {
 func TestInvalidHttpMethod(t *testing.T) {
 	msg := HTTPMessage{URL: "https://httpbin.org/anything"}
 	reqMsg := HTTPRequest{Message: msg}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reqMsg.Message.Authentication = NONE
+	ctx := context.WithValue(context.Background(), CtxRequestID, "1")
 	m := f.NewMultiplexer()
 	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
@@ -33,8 +33,8 @@ func TestInvalidHttpMethod(t *testing.T) {
 func TestEmptyHttpURL(t *testing.T) {
 	msg := HTTPMessage{Method: GET}
 	reqMsg := HTTPRequest{Message: msg}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reqMsg.Message.Authentication = NONE
+	ctx := context.WithValue(context.Background(), CtxRequestID, "1")
 	m := f.NewMultiplexer()
 	m.AddWorker(&DispatchWorker{})
 	resultStream := m.Multiplex(ctx, reqMsg)
@@ -50,10 +50,10 @@ func TestHttpGETDispatch(t *testing.T) {
 	msg := HTTPMessage{Method: GET, URL: "https://httpbin.org/anything"}
 	msg.Add("header1", "value1")
 	reqMsg := HTTPRequest{Message: msg}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reqMsg.Message.Authentication = NONE
+	ctx := context.WithValue(context.Background(), CtxRequestID, "1")
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{Request: reqMsg})
+	m.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: 10})
 	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err != nil {
@@ -84,8 +84,8 @@ func TestHttpPOSTDispatch(t *testing.T) {
 	msg := HTTPMessage{Method: POST, URL: "https://httpbin.org/post"}
 	msg.Add("accept", "application/json")
 	reqMsg := HTTPRequest{Message: msg}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reqMsg.Message.Authentication = NONE
+	ctx := context.WithValue(context.Background(), CtxRequestID, "1")
 	m := f.NewMultiplexer()
 	m.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: 10})
 	resultStream := m.Multiplex(ctx, nil)
@@ -114,19 +114,17 @@ func TestHttpPOSTDispatch(t *testing.T) {
 	}
 }
 
-func TestHttpGETDeplyedResponse(t *testing.T) {
+func TestHttpGETNoHostError(t *testing.T) {
 	msg := HTTPMessage{Method: GET, URL: "http://localhost:8000/healthz"}
 	reqMsg := HTTPRequest{Message: msg}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reqMsg.Message.Authentication = NONE
+	ctx := context.WithValue(context.Background(), CtxRequestID, "1")
 	m := f.NewMultiplexer()
 	m.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: 10})
 	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
-		if r.Err != nil {
-			log.Printf("Error for id: %v %v\n", r.ID, r.Err.Message)
-		} else {
-			t.Errorf("response not expected check test")
+		if r.Err == nil {
+			t.Errorf("Error expected for but not found id: %v %v\n", r.ID, r.Err.Message)
 		}
 	}
 }
@@ -134,8 +132,8 @@ func TestHttpGETDeplyedResponse(t *testing.T) {
 func TestHttpURLError(t *testing.T) {
 	msg := HTTPMessage{Method: GET, URL: "http://unknown:8000/healthz"}
 	reqMsg := HTTPRequest{Message: msg}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reqMsg.Message.Authentication = NONE
+	ctx := context.WithValue(context.Background(), CtxRequestID, "1")
 	m := f.NewMultiplexer()
 	m.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: 10})
 	resultStream := m.Multiplex(ctx, nil)
@@ -151,10 +149,10 @@ func BenchmarkDispatchWorker(b *testing.B) {
 	msg := HTTPMessage{Method: GET, URL: "https://httpbin.org/anything"}
 	msg.Add("header1", "value1")
 	reqMsg := HTTPRequest{Message: msg}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reqMsg.Message.Authentication = NONE
+	ctx := context.WithValue(context.Background(), CtxRequestID, "1")
 	m := f.NewMultiplexer()
-	m.AddWorker(&DispatchWorker{Request: reqMsg})
+	m.AddWorker(&DispatchWorker{Request: reqMsg, activeDeadLineSeconds: 10})
 	resultStream := m.Multiplex(ctx, nil)
 	for r := range resultStream {
 		if r.Err != nil {

@@ -28,8 +28,8 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 		defer close(resultStream)
 
 		if len(hdw.Request.Message.Method) == 0 || len(hdw.Request.Message.URL) == 0 {
-			log.LogInvalidRequest(RequestID(ctx), hdw.Request.Message.ID, "Method or URL is empty")
-			resultStream <- f.Result{ID: RequestID(ctx), X: makeErrorResponse(hdw.Request, http.StatusBadRequest),
+			log.LogInvalidRequest(extractRequestID(ctx), hdw.Request.Message.ID, "Method or URL is empty")
+			resultStream <- f.Result{ID: extractRequestID(ctx), X: makeErrorResponse(hdw.Request, http.StatusBadRequest),
 				Err: &f.FJError{Code: f.RequestError, Message: "Method or URL is empty"}}
 			return
 		}
@@ -45,8 +45,8 @@ func (hdw *DispatchWorker) Work(ctx context.Context, x interface{}) <-chan f.Res
 		}
 
 		if !validMethod {
-			log.LogInvalidRequest(RequestID(ctx), hdw.Request.Message.ID, fmt.Sprintf("Method %v is invalid", hdw.Request.Message.Method))
-			resultStream <- f.Result{ID: RequestID(ctx), X: makeErrorResponse(hdw.Request, http.StatusBadRequest),
+			log.LogInvalidRequest(extractRequestID(ctx), hdw.Request.Message.ID, fmt.Sprintf("Method %v is invalid", hdw.Request.Message.Method))
+			resultStream <- f.Result{ID: extractRequestID(ctx), X: makeErrorResponse(hdw.Request, http.StatusBadRequest),
 				Err: &f.FJError{Code: f.RequestError, Message: fmt.Sprintf("Method %v is invalid", hdw.Request.Message.Method)}}
 			return
 		}
@@ -76,32 +76,32 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 		client, cerr := newClient(reqMsg, req)
 
 		if cerr != nil {
-			log.LogAuthenticationError(RequestID(ctx), reqMsg.Message.ID, cerr.Message)
-			responseStream <- f.Result{ID: RequestID(ctx),
+			log.LogAuthenticationError(extractRequestID(ctx), reqMsg.Message.ID, cerr.Message)
+			responseStream <- f.Result{ID: extractRequestID(ctx),
 				X:   makeErrorResponse(reqMsg, http.StatusRequestTimeout),
 				Err: &f.FJError{Code: f.AuthenticationError, Message: cerr.Message},
 			}
 		} else {
 			res, err := client.Do(req)
 			if ctx.Err() != nil && res == nil {
-				log.LogAbortedRequest(RequestID(ctx), reqMsg.Message.ID,
+				log.LogAbortedRequest(extractRequestID(ctx), reqMsg.Message.ID,
 					fmt.Sprintf("Aborted. Too longer than active deadline %v", reqMsg.Message.ActiveDeadLine))
 				responseStream <- f.Result{
-					ID: RequestID(ctx), X: makeErrorResponse(reqMsg, http.StatusRequestTimeout),
+					ID: extractRequestID(ctx), X: makeErrorResponse(reqMsg, http.StatusRequestTimeout),
 					Err: &f.FJError{Code: f.RequestAborted,
 						Message: fmt.Sprintf("Request aborted took longer than %v seconds %v",
 							reqMsg.Message.ActiveDeadLine, err)},
 				}
 			} else if err != nil {
-				log.LogRequestDispatchError(RequestID(ctx), reqMsg.Message.ID, err.Error())
-				responseStream <- f.Result{ID: RequestID(ctx),
+				log.LogRequestDispatchError(extractRequestID(ctx), reqMsg.Message.ID, err.Error())
+				responseStream <- f.Result{ID: extractRequestID(ctx),
 					X:   makeErrorResponse(reqMsg, http.StatusBadGateway),
 					Err: &f.FJError{Code: f.ConnectionError, Message: fmt.Sprintf("Error in dispatching request: %v", err)}}
 			} else {
 				bb, err := io.ReadAll(res.Body)
 				if err != nil {
-					log.LogResponseError(RequestID(ctx), reqMsg.Message.ID, err.Error())
-					responseStream <- f.Result{ID: RequestID(ctx),
+					log.LogResponseError(extractRequestID(ctx), reqMsg.Message.ID, err.Error())
+					responseStream <- f.Result{ID: extractRequestID(ctx),
 						X:   makeResponse(reqMsg, res, nil),
 						Err: &f.FJError{Code: f.ResponseError, Message: fmt.Sprintf("Error reading http response: %v", err)}}
 				}
@@ -114,7 +114,7 @@ func httpDispatch(ctx context.Context, reqMsg HTTPRequest, resultStream chan<- f
 					}
 				}
 				defer res.Body.Close()
-				responseStream <- f.Result{ID: RequestID(ctx), X: hr}
+				responseStream <- f.Result{ID: extractRequestID(ctx), X: hr}
 			}
 		}
 	}()

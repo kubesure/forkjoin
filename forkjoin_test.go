@@ -3,7 +3,6 @@ package forkjoin
 import (
 	"context"
 	"log"
-	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -72,7 +71,7 @@ func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Res
 			resultStream <- Result{Err: &FJError{Code: RequestError, Message: "type assertion err prospectcompany not found"}}
 			return
 		}
-		n := 5
+		n := 3
 		log.Printf("Sleeping %d seconds...\n", n)
 		for {
 			select {
@@ -88,10 +87,4 @@ func (c *centralbankchecker) Work(ctx context.Context, x interface{}) <-chan Res
 	}()
 
 	return resultStream
-}
-
-func randInt(inrange int) int {
-	rand.Seed(time.Now().UnixNano())
-	n := rand.Intn(inrange)
-	return n
 }

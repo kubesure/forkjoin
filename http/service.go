@@ -9,19 +9,19 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-//Request ID key passsed as data in context
-type ctxKey int
+// Request ID key passsed as data in context
+type ctxKey string
 
 const (
-	CtxRequestID ctxKey = iota
+	CtxRequestID ctxKey = "reqID"
 )
 
-//DispatchServer implements GRPC server interface FannoutFannin
+// DispatchServer implements GRPC server interface FannoutFannin
 type DispatchServer struct {
 	UnimplementedHTTPForkJoinServiceServer
 }
 
-//FanoutFanin Fans out each http message to http dispatch works using the fork join interface
+// FanoutFanin Fans out each http message to http dispatch works using the fork join interface
 func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinService_FanoutFaninServer) error {
 	ctx := context.WithValue(context.Background(), CtxRequestID, request.Id)
 	log := fj.NewLogger()
@@ -58,7 +58,7 @@ func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinServic
 	}
 
 	resultStream := mtplx.Multiplex(ctx, nil)
-	log.LogInfo(RequestID(ctx), "Forked")
+	log.LogInfo(extractRequestID(ctx), "Forked")
 	for result := range resultStream {
 		response, _ := result.X.(HTTPResponse)
 		if result.Err != nil {
@@ -78,7 +78,7 @@ func (s *DispatchServer) FanoutFanin(request *Request, stream HTTPForkJoinServic
 			}
 		}
 	}
-	log.LogInfo(RequestID(ctx), "Joined")
+	log.LogInfo(extractRequestID(ctx), "Joined")
 	return nil
 }
 
@@ -95,7 +95,7 @@ func makeErrResMsg(response HTTPResponse) *Message {
 	return m
 }
 
-//func makeGrpcErrRes(code fj.EventCode, msg string) *HTTPResponse {
+// func makeGrpcErrRes(code fj.EventCode, msg string) *HTTPResponse {
 func makeGrpcErrRes(reqID string, err fj.FJError, response HTTPResponse) *Response {
 	fjerrors := []*Error{}
 	fjerr := Error{Code: ErrorCode(err.Code), Message: err.Message}
@@ -105,6 +105,6 @@ func makeGrpcErrRes(reqID string, err fj.FJError, response HTTPResponse) *Respon
 	return &r
 }
 
-func RequestID(ctx context.Context) string {
+func extractRequestID(ctx context.Context) string {
 	return ctx.Value(CtxRequestID).(string)
 }
